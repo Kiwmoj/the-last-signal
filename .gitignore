@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+backup_before_ch1_fix/
+.vscode/
