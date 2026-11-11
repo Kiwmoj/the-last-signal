@@ -5,7 +5,7 @@ import os
 PATH = os.path.join(os.path.expanduser("~"), ".the_last_signal.json")
 
 DEFAULTS = {
-    "settings": {"music_volume": 6, "sfx_volume": 7, "scanlines": True, "fullscreen": False},
+    "settings": {"music_volume": 6, "sfx_volume": 7, "scanlines": True, "fullscreen": False, "guide_arrows": True},
     "progress": None,  # filled by gameplay in later stages
 }
 

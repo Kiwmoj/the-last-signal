@@ -30,7 +30,7 @@ from ..dialogue import Dialog
 from ..story import PUZZLES, REWARD, CHAMBER_FILES
 from ..chapters import StoryManager, EVENTS, BY_N
 from ..tutorial import Tutorial
-from ..world import (World, WORLD_W, WORLD_H, ANNEX_END, FREQS, FREQ_NAMES, TINT,
+from ..world import (World, WORLD_W, WORLD_H, ANNEX_END, VAULT_END, ARCHIVE_END, FREQS, FREQ_NAMES, TINT,
                      draw_prop, draw_windows, draw_beams, lamp_flicker, ceiling_flicker)
 from .. import ui
 
@@ -182,6 +182,7 @@ class GameplayScene(Scene):
     def learn(self, clue):
         """Add a journal entry (tuple from the world/story data). Announces new discoveries."""
         if clue and self.journal.add_tuple(clue):
+            self.flags.add("clue_" + clue[0])        # lets the Echo Receiver stop pointing at clues you already found
             self.say("Journal updated  [J]", 3)
             self.audio.play("note")
             for pid, name, text in PEOPLE.get(clue[0], ()):
@@ -328,6 +329,8 @@ class GameplayScene(Scene):
             self.flags.add("pause_opened")
             from .pause import PauseScene
             self.game.push(PauseScene(self.game, self))
+        elif k == K.Key_H and not self.dialog:
+            self.toggle_guide()
         elif k == K.Key_F3 and os.environ.get("TLS_DEBUG") == "1":
             self.debug = not self.debug
         elif k == K.Key_J and not self.dialog:
@@ -549,6 +552,13 @@ class GameplayScene(Scene):
             self.audio.play("pickup")
             self.learn(("fuse", "The spare fuse", "Found a spare fuse in the Unknown. It belongs in the Main Transmitter, which only shows its fuse slot on 104.7."))
             lines.append("It must belong in the transmitter, but the transmitter is on the other side of the rubble.")
+        elif act == "locker":
+            if "locker_open" in self.flags:
+                lines = ["The locker is empty now. Elias's letter and the maintenance tape are in your journal and your Echo's memory."]
+            else:
+                from .puzzles import PasswordScene, LOCKER_CFG
+                self.game.push(PasswordScene(self.game, self, LOCKER_CFG))
+                return
         elif act == "beacon":
             lines, style = self._beacon(f, lines), ("voice" if f == 2 else "radio")
         if spec.get("clue"):
@@ -639,6 +649,9 @@ class GameplayScene(Scene):
         self.story.update()
         self.run_events()
         self.mission_toast = max(0.0, self.mission_toast - dt)
+        if "tut_move" in self.flags and "guide_told" not in self.flags and not self.dialog and not self.current_event and not self.events:
+            self.flags.add("guide_told")
+            self.say("Gold arrows show where to go.  [H] hides them", 4.5)
         if self.player.x > 130 and self.zone == "CONTROL ROOM":
             self.flags.add("entered")
         if self.zone == "RESEARCH WING":
@@ -964,6 +977,7 @@ class GameplayScene(Scene):
         if self.frozen:       # a puzzle screen is open and draws its own interface
             return
         t = self.t
+        self._draw_guide(p, cx, cy)
         ui.panel(p, 6, 6, 214, 46, CYAN)
         p.fillRect(13, 14, 4, 4, QColor(80, 230, 255, 140 + int(100 * math.sin(t * 3))))
         ui.text(p, self.zone, 22, 19, CYAN, 8, True)
@@ -1042,6 +1056,134 @@ class GameplayScene(Scene):
             p.fillRect(x + 40 + i * 8, y + 36 - (3 + i), 6, 3 + i, c if on else QColor(34, 40, 54))
         if s > .8 and int(t * 5) % 2 == 0:
             ui.text(p, "LOCK", x + 42, y + 11 + 0, GREEN, 6, True)
+
+    # ------------------------------------------------------------------ guide arrows
+    # Gold chevrons lead along a path (through the doorways) to the current objective. H toggles them.
+    GATES = [(402, 173), (ANNEX_END - 7, 128), (VAULT_END - 7, 128), (ARCHIVE_END - 7, 128)]   # doorway centres between rooms
+    ROOMS = {"control": (200, 170), "offices": (520, 170), "wing": (700, 120), "archive": (830, 128)}
+
+    @property
+    def guide_on(self):
+        return self.game.save.settings.get("guide_arrows", True)
+
+    def _prop(self, action=None, sid=None, kind=None, clue=None):
+        for pr in self.world.props:
+            ids = {pr.clue[0]} if pr.clue else set()
+            ids |= {a["clue"][0] for a in pr.alt.values() if a.get("clue")}
+            if (action is None or pr.action == action) and (sid is None or pr.sid == sid) \
+                    and (kind is None or pr.kind == kind) and (clue is None or clue in ids):
+                c = pr.rect.center()
+                return (c.x(), c.y())
+        return None
+
+    def guide_target(self):
+        """(x, y, exact) of where the current objective is. Hidden signals only give the ROOM to search (exact=False)."""
+        m = self.story.mission()
+        if not m or self.dialog or self.current_event:
+            return None
+        f, mid, R = self.flags, m.id, self.ROOMS
+        pt = None
+        if mid == "c1m2":
+            pt = (210, 176)
+        elif mid == "c1m3":
+            pt = self._prop("echo_pickup")
+        elif mid == "c2m1":
+            if not (self.journal.has("staff") and self.journal.has("log_final")):
+                pt = self._prop("terminal")
+            elif not self.journal.has("evacuated"):
+                pt = self._prop(clue="evacuated")
+            else:
+                pt = self._prop(clue="belongings")
+        elif mid == "c2m2":
+            pt = self._prop("transmitter") if self.has_fuse else self._prop("fuse_take")
+        elif mid == "c2m4":
+            pt = self._prop("door")
+        elif mid in ("c3m1", "c3m2"):
+            pt = self._prop("beacon")
+        elif mid == "c3m3":
+            pt = self._prop("oldradio")
+        elif mid == "c3m4":
+            pt = self._prop("secdoor")
+        elif mid == "c3m5":
+            pt = self._prop("receiver")
+        elif mid == "c4m4":
+            pt = self._prop("rack")
+        elif mid == "c5m1":
+            pt = self._prop("chamberdoor")
+        elif mid == "c5m2":
+            pt = self._prop("terminal2")
+        elif mid in ("c5m3", "c5m4"):
+            pt = self._prop("finaltx")
+        else:
+            area = {"c2m3": "control", "c3m6": "archive", "c4m1": "control", "c4m2": "offices", "c4m3": "wing"}.get(mid)
+            if area:
+                return R[area] + (False,)
+            return None
+        return pt + (True,) if pt else None
+
+    def guide_path(self, tx, ty):
+        """Polyline from the player to the target that passes through the doorways between rooms."""
+        px, py = self.player.x, self.player.y - 2
+        pts = [(px, py)]
+        if px < tx:
+            pts += [g for g in self.GATES if px < g[0] < tx]
+        else:
+            pts += [g for g in reversed(self.GATES) if tx < g[0] < px]
+        pts.append((tx, ty))
+        return pts
+
+    def _draw_guide(self, p, cx, cy):
+        if not self.guide_on or self.dialog or self.frozen:
+            return
+        tg = self.guide_target()
+        if tg is None:
+            return
+        tx, ty, exact = tg
+        pts = self.guide_path(tx, ty)
+        t = self.t
+        gold = QColor(255, 210, 90)
+        step, travelled = 26.0, 0.0
+        phase = (t * 36) % step
+        p.setPen(Qt.PenStyle.NoPen)
+        for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+            seg = math.hypot(x1 - x0, y1 - y0)
+            if seg < 1:
+                continue
+            ux, uy = (x1 - x0) / seg, (y1 - y0) / seg
+            d = (phase - travelled) % step
+            while d < seg:
+                dist = travelled + d
+                if dist > 24 and dist < 300:                 # no clutter right on the player or far away
+                    sx, sy = x0 + ux * d - cx, y0 + uy * d - cy
+                    a = int(210 * max(0.0, 1 - dist / 300))
+                    p.setBrush(QColor(gold.red(), gold.green(), gold.blue(), a))
+                    nx, ny = -uy, ux
+                    p.drawPolygon(QPolygonF([QPointF(sx + ux * 5, sy + uy * 5), QPointF(sx - ux * 3 + nx * 4, sy - uy * 3 + ny * 4),
+                                             QPointF(sx - ux * 1, sy - uy * 1), QPointF(sx - ux * 3 - nx * 4, sy - uy * 3 - ny * 4)]))
+                d += step
+            travelled += seg
+        sx, sy = tx - cx, ty - cy
+        bob = math.sin(t * 5) * 2
+        if exact:
+            p.setBrush(gold)
+            p.drawPolygon(QPolygonF([QPointF(sx, sy - 20 + bob), QPointF(sx - 5, sy - 28 + bob), QPointF(sx + 5, sy - 28 + bob)]))
+        else:                                              # a hidden thing is somewhere in this room
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.setPen(QPen(QColor(255, 210, 90, 150 + int(80 * math.sin(t * 4))), 1))
+            p.drawEllipse(QPointF(sx, sy), 30, 20)
+            ui.text(p, "SEARCH HERE", sx, sy - 24, gold, 6, True, True)
+        if not (6 < sx < W - 6 and 6 < sy < H - 6):         # off-screen: arrow on the screen edge
+            ang = math.atan2(ty - self.player.y, tx - self.player.x)
+            mx, my = max(14, min(W - 14, sx)), max(70, min(H - 24, sy))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor(255, 210, 90, 200))
+            p.drawPolygon(QPolygonF([QPointF(mx + math.cos(ang + a) * r, my + math.sin(ang + a) * r) for a, r in ((0, 10), (2.5, 7), (-2.5, 7))]))
+
+    def toggle_guide(self):
+        s = self.game.save.settings
+        s["guide_arrows"] = not s.get("guide_arrows", True)
+        self.say("Guide arrows " + ("ON" if s["guide_arrows"] else "OFF") + "  [H]", 2)
+        self.audio.play("click")
 
     def _draw_marker(self, p, cx, cy):
         """While the Echo is tracking: a bobbing marker over the nearest hidden signal, or an edge arrow pointing to it."""

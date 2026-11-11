@@ -17,6 +17,7 @@ Terminal file lock flags: "flag" = locked until flag set, "+flag" = file only ap
 # ---------------------------------------------------------------- puzzle constants
 PASSWORD = "NORA1971"        # archive door: NAME (decrypted log, 88.1) + YEAR (notebook, 104.7), format hint on 121.3
 CHAMBER_CODE = "140880"      # chamber door: DAY (88.1) + MONTH (104.7) + YEAR (121.3) plaques
+LOCKER_CODE = "6402"         # optional Staff Locker 2-A: digits on the duty board (104.7), whiteboard (88.1 / 121.3), wing slate (88.1)
 FRAG_ORDER = [1, 0, 2]       # Old Radio: past fragment, present fragment, unknown fragment
 RECEIVER_PULSES = {0: 3, 1: 1, 2: 2}
 RECEIVER_ORDER = [0, 2, 1]   # heaviest pulse count first: 88.1 (3), 121.3 (2), 104.7 (1)
@@ -55,6 +56,10 @@ PUZZLES = [
      "Elias left three echoes, one per band, in three places: the control room (past), the offices (unknown) and the research wing (present). "
      "Each points to the next.",
      "The trail ends at recording rack 09-A in the archive."),
+    ("locker_open", "Staff Locker 2-A",
+     "Marlowe's staff locker in the Offices takes a four-digit code. Its digits were left in different rooms: the Control Room duty board, "
+     "the Offices whiteboard and the Research Wing slate. Each is only readable on one frequency.",
+     "Inside: Elias's unsent letter to his daughter, and a maintenance tape from the night it began."),
     ("chamber_open", "The Chamber Lock",
      "The chamber opens to the date everything began. The station wrote it in three places, one per layer: the day, the month and the year.",
      "The Transmission Chamber is open."),

@@ -24,6 +24,7 @@ class SettingsScene(Scene):
         return [
             f"Music       {bar(s['music_volume'])}",
             f"Effects     {bar(s['sfx_volume'])}",
+            f"Guide arrows {'ON' if s.get('guide_arrows', True) else 'OFF'}",
             f"Scanlines   {'ON' if s['scanlines'] else 'OFF'}",
             f"Fullscreen  {'ON' if s['fullscreen'] else 'OFF'}",
             "Back",
@@ -45,8 +46,10 @@ class SettingsScene(Scene):
                 s["sfx_volume"] = max(0, min(10, s["sfx_volume"] + d))
                 self.game.audio.play("blip")             # hear the new effects volume straight away
             elif self.sel == 2:
-                s["scanlines"] = not s["scanlines"]
+                s["guide_arrows"] = not s.get("guide_arrows", True)
             elif self.sel == 3:
+                s["scanlines"] = not s["scanlines"]
+            elif self.sel == 4:
                 self.game.set_fullscreen(not s["fullscreen"])
             elif k not in arrows:
                 self.close()
@@ -59,10 +62,10 @@ class SettingsScene(Scene):
 
     def draw(self, p):
         draw_backdrop(p, self.t)
-        ui.panel(p, 110, 50, 260, 160, CYAN)
-        ui.text(p, "SETTINGS", W / 2, 72, CYAN, 12, True, True, True)
+        ui.panel(p, 110, 44, 260, 180, CYAN)
+        ui.text(p, "SETTINGS", W / 2, 66, CYAN, 12, True, True, True)
         for i, r in enumerate(self.rows()):
             on = i == self.sel
-            ui.text(p, ("> " if on else "  ") + r, 135, 100 + i * 20,
+            ui.text(p, ("> " if on else "  ") + r, 128, 92 + i * 19,
                     AMBER if on else TEXT, 9, on)
-        ui.text(p, "A/D adjust   ESC back", W / 2, 198, DIM, 7, False, True)
+        ui.text(p, "A/D adjust   ESC back", W / 2, 214, DIM, 7, False, True)

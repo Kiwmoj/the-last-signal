@@ -211,6 +211,27 @@ class World:
             P("receiver", 800, 84, 52, 60, name="Transmission Receiver", verb="Operate", action="receiver", style="radio", lines=[
                 "An enormous old receiver, all dials and coils."]),
             # --- Echo Receiver: the handheld on the side table, and the hidden signals only it can find ---
+            # --- Staff Locker 2-A: a four-digit code whose digits are left in three different rooms ---
+            P("board", 262, 196, 30, 38, name="Duty Board", verb="Read", style="note", lines=[
+                "A cork board of shift rotas. One card is pinned apart from the rest: 'LOCKER 2-A, in the Offices. Four digits, one per note. "
+                "The notes are in Control, in the Offices and in the Wing, and each reads clearly on only one frequency.'"],
+              clue=("lk_rule", "Locker 2-A: how it works", "Staff Locker 2-A (Offices) takes four digits. They are on the Control Room duty board, the Offices whiteboard and the Research Wing slate. Each note only reads clearly on one frequency.", "key"),
+              alt={1: {"style": "voice", "lines": ["In the Past the board is crowded with cards, and one line is in Elias's handwriting: 'Locker 2-A. My digit: 6. First.'"],
+                       "clue": ("lk_1", "Locker digit 1: 6", "Control Room duty board, 104.7 MHz: Elias wrote 'Locker 2-A. My digit: 6. First.'", "key")},
+                   2: {"style": "voice", "lines": ["The cards are blank rectangles of violet light. Nothing to read here."], "clue": None}}),
+            P("board", 426, 118, 30, 34, name="Maintenance Whiteboard", verb="Read", style="note", lines=[
+                "A whiteboard of repair jobs. Circled in red: 'LOCKER 2-A, second digit: 4. Tell Wren.'"],
+              clue=("lk_2", "Locker digit 2: 4", "Offices whiteboard, 88.1 MHz: 'LOCKER 2-A, second digit: 4. Tell Wren.'", "key"),
+              alt={1: {"lines": ["On this side of time the board has just been wiped clean."], "clue": None},
+                   2: {"style": "voice", "lines": ["Under the violet glow the eraser smears resolve into a single drawn circle, and beneath it: 'third digit: 0. An empty circle.'"],
+                       "clue": ("lk_3", "Locker digit 3: 0", "Offices whiteboard, 121.3 MHz: 'third digit: 0.' An empty circle.", "key")}}),
+            P("board", 648, 162, 24, 26, name="Technician's Slate", verb="Read", style="note", lines=[
+                "A chalk slate on a little easel: 'Locker 2-A, last digit: 2. Don't tell Elias.'"],
+              clue=("lk_4", "Locker digit 4: 2", "Research Wing slate, 88.1 MHz: 'Locker 2-A, last digit: 2. Don't tell Elias.'", "key"),
+              alt={1: {"lines": ["The slate is clean on this side of time."], "clue": None},
+                   2: {"style": "voice", "lines": ["Violet dust drifts across the slate. The writing is unreadable here. The Present shows it clearly."], "clue": None}}),
+            P("locker", 504, 226, 26, 40, name="Staff Locker 2-A", verb="Open", action="locker", lines=[
+                "A grey steel locker stencilled 2-A. A four-digit dial lock hangs from the latch."]),
             P("sidetable", 66, 140, 46, 22, name=None),
             P("echorecv", 82, 134, 14, 30, solid=False, name="Echo Receiver", verb="Pick up", action="echo_pickup",
               hide_if="echo_found", zone=(60, 120, 60, 60), lines=list(ECHO_PICKUP)),
@@ -283,6 +304,7 @@ class World:
             (2, 316, 126, "p1_done"), (2, 346, 206, None), (0, 826, 116, "p3_done"), (1, 826, 116, "p3_done"),
             (2, 826, 116, "p3_done"),
             (0, 371, 42, "chamber_open", "ch4_done"), (1, 517, 40, "chamber_open", "ch4_done"), (2, 679, 179, "chamber_open", "ch4_done"),
+            (1, 277, 215, "clue_lk_1"), (0, 441, 135, "clue_lk_2"), (2, 441, 135, "clue_lk_3"), (0, 660, 176, "clue_lk_4"),
             (0, 1012, 115, "final_ready", "chamber_open"), (1, 1012, 115, "final_ready", "chamber_open"), (2, 1012, 115, "final_ready", "chamber_open"),
         ]
         self.bg = build_background(self.windows)
@@ -899,6 +921,35 @@ def _sigil(p, pr, t, st):
         p.fillRect(int(cx + math.cos(ang) * 13), int(cy + math.sin(ang) * 7), 2, 2, QColor(255, 180, 255, 230))
 
 
+def _board(p, pr, t, st):
+    """Standing board (duty board / whiteboard / slate): frame, pale face, a few scribbled lines, a red circle."""
+    x, y, w, h = pr.rect.x(), pr.rect.y(), pr.rect.width(), pr.rect.height()
+    box(p, x + 3, y + h - 8, 3, 8, (50, 40, 32)); box(p, x + w - 6, y + h - 8, 3, 8, (50, 40, 32))
+    box(p, x, y, w, h - 8, (92, 82, 70))
+    box(p, x + 2, y + 2, w - 4, h - 12, (176, 180, 170))
+    w, h = int(w), int(h)
+    r = random.Random(int(x))
+    for i in range(3):
+        box(p, x + 4, y + 5 + i * 5, r.randint(w // 3, w - 10), 1, (70, 78, 96))
+    box(p, x + w - 11, y + h - 17, 6, 1, (170, 60, 60)); box(p, x + w - 11, y + h - 22, 6, 1, (170, 60, 60))
+    box(p, x + w - 11, y + h - 22, 1, 6, (170, 60, 60)); box(p, x + w - 6, y + h - 22, 1, 6, (170, 60, 60))
+
+
+def _locker(p, pr, t, st):
+    x, y, w, h = pr.rect.x(), pr.rect.y(), pr.rect.width(), pr.rect.height()
+    opened = "locker_open" in st.flags
+    box(p, x, y, w, h, (62, 72, 88)); box(p, x, y, w, 1, (112, 126, 148)); box(p, x, y, 1, h, (96, 108, 128))
+    if opened:
+        box(p, x + 3, y + 3, w - 6, h - 6, (14, 16, 22)); box(p, x + 3, y + 3, 3, h - 6, (84, 96, 118))
+        box(p, x + 10, y + 14, 8, 10, (190, 184, 160))
+    else:
+        for i in range(4):
+            box(p, x + 4, y + 4 + i * 2, w - 8, 1, (38, 44, 56))
+        box(p, x + w - 8, y + h // 2 - 4, 3, 8, (150, 160, 176))
+        lit = .5 + .5 * math.sin(t * 3)
+        box(p, x + w // 2 - 3, y + h // 2 + 6, 6, 6, (40, 48, 60)); box(p, x + w // 2 - 1, y + h // 2 + 8, 2, 2, (255, int(150 + 60 * lit), 60))
+
+
 def _plaque(p, pr, t, st):
     x, y = pr.rect.x(), pr.rect.y()
     box(p, x, y, 14, 14, (140, 112, 50)); box(p, x, y, 14, 1, (200, 170, 90)); box(p, x + 1, y + 13, 13, 1, (80, 62, 28))
@@ -1169,7 +1220,7 @@ def _rack09(p, pr, t, st):
 _DRAW = {"console": _console, "computer": _computer, "rack": _rack, "table": _table,
          "chair": _chair, "cabinet": _cabinet, "shelf": _shelf, "crate": _crate,
          "plant": _plant, "artifact": _artifact, "door": _door, "switch": _switch,
-         "rubble": _rubble, "arch": _arch, "echo": _echo, "veil": _veil, "fuse": _fuse,
+         "rubble": _rubble, "board": _board, "locker": _locker, "arch": _arch, "echo": _echo, "veil": _veil, "fuse": _fuse,
          "glyphs": _glyphs, "sigil": _sigil, "plaque": _plaque, "beacon": _beacon, "mural": _mural,
          "oldradio": _oldradio, "notebook": _notebook, "secdoor": _secdoor, "archive": _archive,
          "receiver": _receiver, "sidetable": _sidetable, "echorecv": _echorecv, "source": _source,

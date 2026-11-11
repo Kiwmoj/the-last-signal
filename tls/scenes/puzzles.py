@@ -12,7 +12,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
 
 from ..constants import CYAN, AMBER, TEXT, DIM, GREEN, RED
-from ..story import (PASSWORD, CHAMBER_CODE, FRAG_ORDER, RADIO_FRAGMENTS, RADIO_VOICES, RADIO_RESTORED, RECEIVER_PULSES,
+from ..story import (PASSWORD, CHAMBER_CODE, LOCKER_CODE, FRAG_ORDER, RADIO_FRAGMENTS, RADIO_VOICES, RADIO_RESTORED, RECEIVER_PULSES,
                      RECEIVER_ORDER, RECEIVER_DECODE, REWARD)
 from ..world import FREQS, FREQ_NAMES, TINT
 from .. import ui
@@ -236,6 +236,26 @@ CHAMBER_CFG = dict(
              "A low hum rolls out, matching the pulse of whatever waits inside."])
 
 
+LOCKER_CFG = dict(
+    title="STAFF LOCKER 2-A  //  OFFICES", answer=LOCKER_CODE, digits_only=True, maxlen=4, flag="locker_open",
+    puzzle_title="Staff Locker 2-A",
+    intro="A four-digit dial lock. One digit was left in each of several rooms, and each only reads clearly on one frequency. "
+          "Type digits in order, then press ENTER.",
+    hint="SYSTEM HINT: digit 1 is on the Control Room duty board (104.7). Digits 2 and 3 are on the Offices whiteboard (88.1, then 121.3). Digit 4 is on the Research Wing slate (88.1).",
+    notes=("lk_rule", "lk_1", "lk_2", "lk_3", "lk_4"),
+    notes_empty="Nothing yet. Start with the duty board in the Control Room.",
+    key_id="key_locker", key_title=f"Locker 2-A code: {LOCKER_CODE}",
+    key_text=f"Locker 2-A opened with {LOCKER_CODE}: one digit from each of the notes left around the station.",
+    who="LOCKER 2-A",
+    granted=["CLICK. The dial gives, and the locker door swings open with a groan.",
+             "Inside: a folded letter, and a small maintenance tape labelled 'THE NIGHT IT BEGAN'."],
+    extra=[("elias_letter", "Elias's unsent letter",
+            "'Nora, if the experiment works, I will hear your voice again. If it fails, know that I never stopped listening. "
+            "I hid the date where the station would show it to anyone who listened closely: one layer each. I should have burned the archive.'", "clue")],
+    tape=("locker_tape", 1, "Maintenance tape 2-A",
+          "WREN: 'Three thirty-three. Elias has the archive open and he will not stop. The receiver is answering, and the voice on it is not one of ours.'"))
+
+
 class PasswordScene(Overlay):
     """Keypad screen for the archive password and the chamber date code (configured by a cfg dict)."""
 
@@ -282,6 +302,10 @@ class PasswordScene(Overlay):
             gp = self.gp
             gp.complete(cfg["flag"], cfg["puzzle_title"], REWARD[cfg["flag"]])
             gp.journal.add(cfg["key_id"], cfg["key_title"], cfg["key_text"], "key")
+            for e in cfg.get("extra", ()):
+                gp.journal.add(*e)
+            if cfg.get("tape"):
+                gp.record(*cfg["tape"])
             self.msg, self.msg_col, self.granted = "ACCESS GRANTED", GREEN, 1.6
             self.audio.play("door")
         else:
