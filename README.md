@@ -6,7 +6,16 @@ You are Alex Reyes, a radio technician sent to the abandoned Station 09 in Augus
 
 ## Run
 
-Windows, no Python needed: run `TheLastSignal.exe` (build it with the steps below).
+Windows, no Python needed: download `TheLastSignal.exe` from the [latest release](https://github.com/Kiwmoj/the-last-signal/releases/latest) and run it.
+
+## Screenshots
+
+| | |
+| --- | --- |
+| ![Main menu](docs/screens/01_menu.png) | ![The Present, 88.1 MHz](docs/screens/02_present.png) |
+| ![The Past, 104.7 MHz](docs/screens/03_past.png) | ![The Unknown, 121.3 MHz, with Echo tracking](docs/screens/05_echo_tracking.png) |
+| ![Journal](docs/screens/06_journal.png) | ![Code lock puzzle](docs/screens/07_locker_keypad.png) |
+| ![Your Mission](docs/screens/08_mission.png) | ![Achievements](docs/screens/09_achievements.png) |
 
 From source:
 
