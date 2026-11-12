@@ -11,6 +11,8 @@ ACHIEVEMENTS = [
     ("archivist", "Archivist", "Unlock the archive.", lambda gp: "archive_open" in gp.flags),
     ("combination", "Combination Master", "Open Staff Locker 2-A.", lambda gp: "locker_open" in gp.flags),
     ("nora", "Nora's Secret", "Open the Wing Safe.", lambda gp: "safe_open" in gp.flags),
+    ("close_call", "Close Call", "Climb above 90% exposure to the Unknown and recover.", lambda gp: gp.max_exposure >= .9 and gp.exposure < .5),
+    ("first_death", "Lost in the Static", "Be taken by the Unknown.", lambda gp: gp.deaths >= 1),
     ("calibrated", "Perfect Pitch", "Calibrate the Archive console.", lambda gp: "cal_done" in gp.flags),
     ("the_voice", "The Voice Was Yours", "Play recording 09-A.", lambda gp: "revealed" in gp.flags),
     ("chamber", "Into the Chamber", "Open the transmission chamber.", lambda gp: "chamber_open" in gp.flags),

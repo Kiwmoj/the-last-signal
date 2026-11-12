@@ -27,6 +27,7 @@ class SettingsScene(Scene):
             f"Guide arrows {'ON' if s.get('guide_arrows', True) else 'OFF'}",
             f"Scanlines   {'ON' if s['scanlines'] else 'OFF'}",
             f"Fullscreen  {'ON' if s['fullscreen'] else 'OFF'}",
+            f"Unknown danger  {'ON' if s.get('danger', True) else 'OFF'}",
             "Controls...",
             "Back",
         ]
@@ -53,6 +54,8 @@ class SettingsScene(Scene):
             elif self.sel == 4:
                 self.game.set_fullscreen(not s["fullscreen"])
             elif self.sel == 5:
+                s["danger"] = not s.get("danger", True)
+            elif self.sel == 6:
                 if k not in arrows:
                     from .controls import ControlsScene
                     self.game.push(ControlsScene(self.game))

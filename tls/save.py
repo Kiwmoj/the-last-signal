@@ -6,7 +6,7 @@ PATH = os.path.join(os.path.expanduser("~"), ".the_last_signal.json")
 SLOTS = 3
 
 DEFAULTS = {
-    "settings": {"music_volume": 6, "sfx_volume": 7, "scanlines": True, "fullscreen": False, "guide_arrows": True, "keys": {}},
+    "settings": {"music_volume": 6, "sfx_volume": 7, "scanlines": True, "fullscreen": False, "guide_arrows": True, "danger": True, "keys": {}},
     "progress": None,           # always mirrors the ACTIVE slot, so the rest of the game just reads/writes this
     "slots": [None] * SLOTS,
     "slot": 0,

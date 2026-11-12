@@ -28,6 +28,10 @@ python main.py
 
 Requires Python 3.10+.
 
+## Danger
+
+Staying tuned to 121.3 MHz (the Unknown) builds up **exposure**. Watch the meter under the radio, tune away to recover, or the Unknown takes you. You get a Try Again screen and lose no progress. Turn it off any time in Settings > Unknown danger.
+
 ## Controls (all rebindable in Settings > Controls)
 
 | Key | Action |

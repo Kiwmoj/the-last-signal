@@ -103,6 +103,11 @@ class GameplayScene(Scene):
         self.shift_t = 14.0
         self.mission_toast = 0.0
         self.debug = False                       # F3 overlay, only toggleable when launched with TLS_DEBUG=1
+        self.exposure = 0.0                      # 0..1: how long you have listened to the Unknown (121.3 MHz). At 1.0 you die.
+        self.max_exposure = 0.0
+        self.warn_lvl = 0
+        self.deaths = 0
+        self._beat_t = 0.0
         self._hint_mission, self._hint_level = None, 0
         # --- radio ---
         self.radio_on = False
@@ -133,6 +138,7 @@ class GameplayScene(Scene):
             self.journal = Journal(prog.get("journal", []))
             self.memory = Journal(prog.get("memory", []))
             self.frags = set(prog.get("frags", []))
+            self.deaths = prog.get("deaths", 0)
             self.radio_on = prog.get("radio", False)
             self.idx = prog.get("idx", 0)
             self.freq = self.old_freq = self.eff
@@ -263,7 +269,7 @@ class GameplayScene(Scene):
             "radio": self.radio_on, "idx": self.idx, "journal": self.journal.to_list(),
             "memory": self.memory.to_list(), "v": 2,
             "chapter": self.story.chapter().n,
-            "frags": sorted(self.frags), "objective": self.objective()})
+            "frags": sorted(self.frags), "deaths": self.deaths, "objective": self.objective()})
         self.game.save.save()
         self._sig = self._progress_sig()
 
@@ -708,6 +714,7 @@ class GameplayScene(Scene):
             if self.shift_t <= 0:
                 self.shift_t = random.uniform(14, 24)
                 self.apply_fx("shift")
+        self._update_exposure(dt)
         # the old radio whispers when you walk past it while it waits to be reconstructed
         if "fixed" in self.flags and "beacon" in self.flags and "p1_done" not in self.flags \
                 and math.hypot(self.player.x - 316, self.player.y - 130) < 70 and int(self.t * 1.2) != int((self.t - dt) * 1.2):
@@ -1022,6 +1029,9 @@ class GameplayScene(Scene):
             self._paint_world(self.cv_new, self.freq, cx, cy)
             src = self.cv_new
         self._composite(p, src, u)
+        if self.exposure > .3:                       # the Unknown tints the world red-violet as exposure climbs
+            pulse = .5 + .5 * math.sin(self.t * (3 + 8 * self.exposure))
+            p.fillRect(0, 0, W, H, QColor(200, 40, 120, int(70 * (self.exposure - .3) * (.6 + .4 * pulse))))
         if self.zone_fade < 1.0:                     # room-to-room fade: dip to dark and back, HUD stays readable
             p.fillRect(0, 0, W, H, QColor(0, 0, 0, int(215 * math.sin(math.pi * self.zone_fade))))
         self._draw_hud(p, cx, cy)
@@ -1077,6 +1087,7 @@ class GameplayScene(Scene):
         ui.text(p, self.objective(), 13, 34, glow, 7, self.mission_toast > 0)
         ui.text(p, self.hint(), 13, 46, DIM, 6)
         self._draw_radio(p)
+        self._draw_exposure(p)
         self.tutorial.draw(p, self)
         self._draw_echo_widget(p)
         self._draw_marker(p, cx, cy)
@@ -1290,6 +1301,74 @@ class GameplayScene(Scene):
         self.audio.play("note")
         tail = "" if self._hint_level == 2 else "   (press K again for more)"
         self.open_dialog(f"HINT {self._hint_level + 1}/3", [hint_for(m.id, self._hint_level) + tail], "terminal")
+
+    # ------------------------------------------------------------------ danger: the Unknown wears you down
+    EXPOSE_SECS, RECOVER_SECS = 55.0, 12.0          # listen to 121.3 for 55 s to die; any other band recovers in 12 s
+
+    @property
+    def danger_on(self):
+        return self.game.save.settings.get("danger", True) and "ch1_done" in self.flags      # never during the Chapter 1 tutorial
+
+    def _update_exposure(self, dt):
+        listening = self.radio_on and self.idx == 2 and self.danger_on and not self.dialog and not self.current_event
+        if listening:
+            self.exposure = min(1.0, self.exposure + dt / self.EXPOSE_SECS)
+            if "danger_told" not in self.flags:
+                self.flags.add("danger_told")
+                self.say("Warning: the Unknown wears you down. Watch the EXPOSURE meter and tune away to recover.", 6)
+        elif self.exposure > 0:
+            self.exposure = max(0.0, self.exposure - dt / self.RECOVER_SECS)
+        self.max_exposure = max(self.max_exposure, self.exposure)
+        e = self.exposure
+        if e < .3:
+            self.warn_lvl = 0
+        elif e >= .85 and self.warn_lvl < 2:
+            self.warn_lvl = 2
+            self.say("The static is closing in. Tune away NOW  " + self.kb("tune"), 4)
+        elif e >= .6 and self.warn_lvl < 1:
+            self.warn_lvl = 1
+            self.say("Your head is ringing. The Unknown is getting to you.", 3.5)
+        if e > .5:                                                   # the world tears up and a heartbeat builds
+            self.statics = max(self.statics, (e - .5) * 1.4)
+            self._beat_t -= dt
+            if self._beat_t <= 0:
+                self._beat_t = 1.3 - e * .8
+                self.audio.play("thud", .15 + .35 * e)
+        if e >= 1.0 and self.game.scenes[-1] is self and not self.dialog and not self.current_event:
+            self.die()
+
+    def die(self):
+        from .death import DeathScene
+        self.deaths += 1
+        self.exposure = 0.0
+        self.dialog = None
+        self.save_progress()
+        self.game.push(DeathScene(self.game, self))
+
+    def respawn(self):
+        """Back on the Present band, right where you stood. Nothing is lost."""
+        self.exposure, self.warn_lvl = 0.0, 0
+        self.idx = 0
+        self._begin_transition(0)
+        self.frozen = False
+        self.fade = .6
+        self.say("You come to on 88.1. Do not stay in the Unknown so long.", 4)
+        self.save_progress()
+
+    def _draw_exposure(self, p):
+        e = self.exposure
+        if self.eff != 2 and e < .02:
+            return
+        if not self.danger_on:
+            return
+        x, y, w = W - 118, 100, 112
+        pulse = .5 + .5 * math.sin(self.t * (4 + 10 * e))
+        col = QColor(190, 90, 255) if e < .6 else QColor(255, int(150 - 120 * e), 90)
+        ui.text(p, "EXPOSURE", x, y, col if e > .6 else DIM, 7, True)
+        p.fillRect(x, y + 4, w, 6, QColor(14, 10, 24))
+        p.fillRect(x, y + 4, int(w * e), 6, col)
+        if e > .85:
+            p.fillRect(x - 1, y + 3, w + 2, 8, QColor(255, 60, 60, int(80 * pulse)))
 
     def toggle_guide(self):
         s = self.game.save.settings
