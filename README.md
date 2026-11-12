@@ -10,6 +10,8 @@ Windows, no Python needed: download `TheLastSignal.exe` from the [latest release
 
 ## Screenshots
 
+![Switching between the three frequencies](docs/screens/frequencies.gif)
+
 | | |
 | --- | --- |
 | ![Main menu](docs/screens/01_menu.png) | ![The Present, 88.1 MHz](docs/screens/02_present.png) |
