@@ -9,7 +9,7 @@ from PyQt6.QtCore import Qt, QRectF
 from PyQt6.QtGui import QColor, QPen
 
 from ..constants import W, H, CYAN, AMBER, TEXT, DIM, GREEN, RED
-from ..story import FINAL_ORDER, FINAL_LINES, REWARD, DECISION, DECISION_INTRO
+from ..story import FINAL_ORDER, FINAL_LINES, REWARD, DECISION, DECISION_INTRO, SECRET_FLAGS
 from ..world import FREQS, FREQ_NAMES, TINT
 from .. import ui
 from .overlay import Overlay, Typer
@@ -119,16 +119,22 @@ class DecisionScene(Overlay):
     def __init__(self, game, gp):
         super().__init__(game, gp)
         self.sel = 0
-        self.keys = ("warn", "silence")
-        self.rects = [QRectF(30, 118, 200, 112), QRectF(250, 118, 200, 112)]
+        self.keys = ("warn", "silence") + (("echo",) if all(f in gp.flags for f in SECRET_FLAGS) else ())
+        if len(self.keys) == 3:
+            self.rects = [QRectF(10, 118, 148, 118), QRectF(166, 118, 148, 118), QRectF(322, 118, 148, 118)]
+        else:
+            self.rects = [QRectF(30, 118, 200, 112), QRectF(250, 118, 200, 112)]
         self.audio.play("rise", .6)
 
     def key_press(self, k):
         K = Qt.Key
         if k == K.Key_Escape:
             self.close()
-        elif k in (K.Key_A, K.Key_Left, K.Key_D, K.Key_Right):
-            self.sel = 1 - self.sel
+        elif k in (K.Key_A, K.Key_Left):
+            self.sel = (self.sel - 1) % len(self.keys)
+            self.audio.play("click", .4)
+        elif k in (K.Key_D, K.Key_Right):
+            self.sel = (self.sel + 1) % len(self.keys)
             self.audio.play("click", .4)
         elif k in (K.Key_Return, K.Key_Enter, K.Key_E, K.Key_Space):
             self.choose(self.sel)
@@ -165,7 +171,7 @@ class DecisionScene(Overlay):
         for i, r in enumerate(self.rects):
             kind = self.keys[i]
             title, desc = DECISION[kind]
-            col = QColor(255, 210, 120) if kind == "warn" else QColor(120, 190, 255)
+            col = {"warn": QColor(255, 210, 120), "silence": QColor(120, 190, 255), "echo": QColor(200, 140, 255)}[kind]
             on = i == self.sel
             p.fillRect(r, QColor(col.red() // 8, col.green() // 8, col.blue() // 8, 235))
             if on:
@@ -174,7 +180,7 @@ class DecisionScene(Overlay):
             p.setBrush(Qt.BrushStyle.NoBrush)
             p.drawRect(QRectF(r.x() + .5, r.y() + .5, r.width() - 1, r.height() - 1))
             ui.text(p, ("> " + title + " <") if on else title, r.center().x(), r.y() + 18, col if on else TEXT, 9, True, True, on)
-            for k, wl in enumerate(ui.wrap(desc, 176, 7)):
+            for k, wl in enumerate(ui.wrap(desc, int(r.width()) - 24, 7)):
                 ui.text(p, wl, r.x() + 12, r.y() + 36 + k * 10, TEXT if on else DIM, 7)
         ui.text(p, "A / D choose     ENTER decide     ESC not yet", W / 2, H - 10, DIM, 7, False, True)
         p.restore()

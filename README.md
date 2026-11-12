@@ -50,7 +50,8 @@ Gamepad (Xbox-compatible, Windows): stick or D-pad moves, A interact, B or Start
 
 - Five connected chapters, two endings, journal, achievements, three save slots.
 - Gold guide arrows lead to the current objective.
-- Optional code puzzles: Staff Locker 2-A and the Wing Safe, with digits spread across rooms and frequencies.
+- Optional puzzles: Staff Locker 2-A and the Wing Safe (digits spread across rooms and frequencies) and a signal-calibration mini-game in the Archive. Finish them all for something extra at the end.
+- Garbled radio speech blips, richer sound effects, an animated title screen, and prompts that switch between key names and controller buttons.
 - Procedural soundtrack with six moods that change by room and frequency.
 
 ## Custom music

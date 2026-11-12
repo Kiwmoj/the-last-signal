@@ -93,7 +93,8 @@ class MenuScene(Scene):
                     W / 2, 248, DIM, 7, False, True)
         seen = self.game.save.data.get("endings", [])
         if seen:
-            ui.text(p, f"Endings found: {len(set(seen))}/2", W - 8 - 80, 14, DIM, 7)
+            from ..story import endings_total
+            ui.text(p, f"Endings found: {len(set(seen))}/{endings_total(seen)}", W - 8 - 80, 14, DIM, 7)
         ui.text(p, "W/S select   ENTER confirm   F11 fullscreen",
                 W / 2, H - 8, DIM, 7, False, True)
 
@@ -109,11 +110,52 @@ def _stars():
     return _star_cache
 
 
+def _atmosphere(p, t):
+    """Slow drifting cloud banks and an occasional shooting star, so the title screen is never still."""
+    p.setPen(Qt.PenStyle.NoPen)
+    for i, (y, sp, al) in enumerate(((60, 5, 16), (96, 8, 22), (130, 3, 14))):
+        off = (t * sp + i * 160) % (W + 220) - 110
+        for k in range(5):
+            p.setBrush(QColor(60, 80, 120, al))
+            p.drawEllipse(QPointF(off + k * 44 - 90, y + math.sin(k + i) * 5), 70, 10 + 4 * math.sin(t * .2 + k))
+    ph = (t % 9.0)
+    if ph < .8:                                         # a shooting star every nine seconds
+        u = ph / .8
+        sx, sy = 120 + u * 130, 20 + u * 60
+        p.setPen(QColor(220, 235, 255, int(200 * (1 - u))))
+        p.drawLine(QPointF(sx, sy), QPointF(sx - 18, sy - 9))
+
+
+def _station(p, t):
+    """The abandoned radio station on the ridge: dark roof, a few windows that flicker like failing power."""
+    bx, by = 52, 188
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(QColor(8, 11, 19))
+    p.drawRect(bx, by, 150, 28)
+    p.drawPolygon(QPolygonF([QPointF(bx - 8, by), QPointF(bx + 75, by - 22), QPointF(bx + 158, by)]))
+    p.drawRect(bx + 118, by - 30, 8, 14)
+    for i in range(5):
+        lit = math.sin(t * (1.1 + i * .37) + i * 2.3) * math.sin(t * 7.3 + i) > -.55 if i not in (1, 3) else (int(t * .5 + i) % 4 != 0)
+        if i == 4:
+            lit = math.sin(t * 23) > .2 and math.sin(t * .8) > .5       # one window is nearly dead
+        c = QColor(255, 190, 90, 210) if lit else QColor(24, 28, 38)
+        p.setBrush(c)
+        p.drawRect(bx + 12 + i * 27, by + 8, 14, 10)
+        if lit:
+            g = QRadialGradient(bx + 19 + i * 27, by + 13, 22)
+            g.setColorAt(0, QColor(255, 190, 90, 40))
+            g.setColorAt(1, QColor(255, 190, 90, 0))
+            p.setBrush(QBrush(g))
+            p.drawEllipse(QPointF(bx + 19 + i * 27, by + 13), 22, 22)
+
+
 def draw_backdrop(p, t):
-    """Night sky, ridge line and a blinking radio tower."""
+    """Night sky, drifting clouds, the abandoned station and a blinking radio tower."""
+    drift = (t * 1.5) % W                               # the whole starfield pans slowly sideways
     for x, y, ph in _stars():
         a = 120 + 100 * math.sin(t * 1.5 + ph)
-        p.fillRect(x, y, 1, 1, QColor(200, 220, 255, int(a)))
+        p.fillRect(int((x - drift) % W), y, 1, 1, QColor(200, 220, 255, int(a)))
+    _atmosphere(p, t)
     pts = [QPointF(0, H)]
     for x in range(0, W + 8, 8):
         pts.append(QPointF(x, 205 + 12 * math.sin(x * .02) + 6 * math.sin(x * .07)))
@@ -121,6 +163,7 @@ def draw_backdrop(p, t):
     p.setBrush(QColor(10, 14, 24))
     p.setPen(Qt.PenStyle.NoPen)
     p.drawPolygon(QPolygonF(pts))
+    _station(p, t)
     # tower with pulsing beacon + signal rings
     tx, ty = 390, 205
     p.setPen(QColor(30, 40, 55))

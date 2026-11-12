@@ -8,8 +8,8 @@ All three keep the world animating behind them, accept Q / SPACE for tuning, giv
 instructions, flash green/red feedback and write their completion into gp.flags (autosaved).
 """
 import math
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor
+from PyQt6.QtCore import Qt, QPointF
+from PyQt6.QtGui import QColor, QPen, QPolygonF
 
 from ..constants import CYAN, AMBER, TEXT, DIM, GREEN, RED
 from ..story import (PASSWORD, CHAMBER_CODE, LOCKER_CODE, SAFE_CODE, FRAG_ORDER, RADIO_FRAGMENTS, RADIO_VOICES, RADIO_RESTORED, RECEIVER_PULSES,
@@ -478,4 +478,142 @@ class ReceiverScene(Overlay):
         if self.flash > 0:
             c = GREEN if act else RED
             p.fillRect(x, y, w, h, QColor(c.red(), c.green(), c.blue(), int(70 * self.flash)))
+        p.restore()
+
+# =====================================================================================
+# OPTIONAL PUZZLE: SIGNAL CALIBRATION (a signal-matching mini-game in the Archive)
+# =====================================================================================
+CAL_ROUNDS = [(3, 3), (5, 2), (2, 5)]        # (frequency step 1-8, strength step 1-5) the target waveform uses, one per round
+CAL_HOLD = 1.2                               # seconds a match must be held steady
+
+
+class CalibrationScene(Overlay):
+    """Match the bright waveform to the dim target with A/D (frequency) and W/S (strength). Hold the match to lock it.
+    The signal meter tells you whether you are getting closer, so it can be solved by reading it, not by guessing."""
+    live = False
+
+    def __init__(self, game, gp):
+        super().__init__(game, gp)
+        self.round = 0
+        self.f, self.a = 1, 1
+        self.hold = 0.0
+        self.done = "cal_done" in gp.flags
+        self.msg, self.msg_col = "", TEXT
+        self.granted = 0.0
+        self.audio.play("click")
+
+    @property
+    def target(self):
+        return CAL_ROUNDS[min(self.round, len(CAL_ROUNDS) - 1)]
+
+    def closeness(self):
+        tf, ta = self.target
+        return max(0.0, 1 - (abs(self.f - tf) / 7 * .6 + abs(self.a - ta) / 4 * .4))
+
+    def key_press(self, k):
+        K = Qt.Key
+        k = int(k)
+        if k == int(K.Key_Escape):
+            self.close()
+            return
+        if self.done or self.granted > 0:
+            return
+        before = (self.f, self.a)
+        if k in (int(K.Key_A), int(K.Key_Left)):
+            self.f = max(1, self.f - 1)
+        elif k in (int(K.Key_D), int(K.Key_Right)):
+            self.f = min(8, self.f + 1)
+        elif k in (int(K.Key_W), int(K.Key_Up)):
+            self.a = min(5, self.a + 1)
+        elif k in (int(K.Key_S), int(K.Key_Down)):
+            self.a = max(1, self.a - 1)
+        if (self.f, self.a) != before:
+            self.hold = 0.0
+            self.audio.play("click", .5)
+
+    def tick(self, dt):
+        if self.granted > 0:
+            self.granted -= dt
+            if self.granted <= 0:
+                self.close()
+                self.gp.open_dialog("CALIBRATION CONSOLE", [
+                    "The console prints a single page and a cassette slides out of the tray.",
+                    "Dr. Wren's last letter, and a tape marked 'IF HE ASKS'."], "terminal")
+            return
+        if self.done:
+            return
+        if (self.f, self.a) == self.target:
+            self.hold += dt
+            if self.hold >= CAL_HOLD:
+                self.hold = 0.0
+                self.round += 1
+                self.audio.play("ok")
+                if self.round >= len(CAL_ROUNDS):
+                    self.finish()
+                else:
+                    self.f, self.a = 1, 1
+                    self.msg, self.msg_col = f"LOCKED. Waveform {self.round + 1} of {len(CAL_ROUNDS)}.", GREEN
+        else:
+            self.hold = max(0.0, self.hold - dt * 2)
+
+    def finish(self):
+        gp = self.gp
+        gp.complete("cal_done", "Signal Calibration", REWARD["cal_done"])
+        gp.journal.add("wren_letter", "Wren's last letter",
+                       "'Elias, I calibrated the console to the voice on the unknown band and it matched to the last digit: it is a person, and it is you, "
+                       "years from now, or someone who becomes you. Please do not open the archive. Come and have coffee with me instead. - Ada'", "clue")
+        gp.record("cal_tape", 1, "Tape: IF HE ASKS",
+                  "WREN: 'If Elias asks, tell him I never stopped believing the voice was sorry. Tell him it sounded like it wanted to come home.'")
+        self.granted = 1.6
+        self.msg, self.msg_col = "CALIBRATION COMPLETE", GREEN
+        self.done = True
+
+    def _wave(self, p, x, y, w, h, f, a, col, width, t):
+        pts = []
+        for i in range(0, w + 1, 2):
+            pts.append(QPointF(x + i, y + h / 2 - math.sin(i / w * math.pi * 2 * f + t * 2.0) * (h / 2 - 4) * (a / 5.0)))
+        p.setPen(QPen(col, width))
+        p.drawPolyline(QPolygonF(pts))
+
+    def draw(self, p):
+        t = self.t
+        p.save()
+        ui.overlay_open(p, t, 190)
+        x, y, w, h = 28, 22, 424, 226
+        ok = self.done
+        col = GREEN if ok else CYAN
+        _frame(p, x, y, w, h, "CALIBRATION CONSOLE  //  ARCHIVE", col)
+        ui.type_lines(p, "Match the bright wave to the dim target. A / D change frequency, W / S change strength. Hold the match until it locks.",
+                      99999, x + 10, y + 30, 404, TEXT, 7, 9)
+        gx, gy, gw, gh = x + 12, y + 62, 300, 96
+        p.fillRect(gx, gy, gw, gh, QColor(4, 10, 18))
+        p.setPen(QColor(30, 50, 70))
+        for i in range(1, 8):
+            p.drawLine(gx + i * gw // 8, gy, gx + i * gw // 8, gy + gh)
+        p.drawLine(gx, gy + gh // 2, gx + gw, gy + gh // 2)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        tf, ta = (3, 3) if ok else self.target
+        self._wave(p, gx, gy, gw, gh, tf if not ok else self.f, ta if not ok else self.a, QColor(255, 176, 60, 110), 3, t)
+        self._wave(p, gx, gy, gw, gh, self.f, self.a, GREEN if (self.f, self.a) == self.target or ok else CYAN, 1, t)
+        p.setPen(QColor(60, 90, 120))
+        p.drawRect(gx, gy, gw - 1, gh - 1)
+        ui.text(p, "TARGET (dim)    YOUR SIGNAL (bright)", gx, gy - 4, DIM, 6)
+        # readouts
+        rx = x + 318
+        ui.text(p, f"FREQUENCY  {self.f}", rx, y + 74, TEXT, 8, True)
+        ui.text(p, f"STRENGTH   {self.a}", rx, y + 90, TEXT, 8, True)
+        ui.text(p, f"WAVEFORM   {min(self.round + 1, len(CAL_ROUNDS))} / {len(CAL_ROUNDS)}", rx, y + 112, AMBER, 8, True)
+        # signal closeness meter and lock bar
+        c = 1.0 if ok else self.closeness()
+        ui.text(p, "SIGNAL MATCH", x + 12, y + 174, DIM, 7, True)
+        p.fillRect(x + 12, y + 180, 300, 8, QColor(14, 22, 34))
+        p.fillRect(x + 12, y + 180, int(300 * c), 8, GREEN if c > .97 else AMBER if c > .6 else RED)
+        ui.text(p, "LOCK", x + 12, y + 202, DIM, 7, True)
+        p.fillRect(x + 12, y + 208, 300, 6, QColor(14, 22, 34))
+        p.fillRect(x + 12, y + 208, int(300 * (1.0 if ok else min(1.0, self.hold / CAL_HOLD))), 6, GREEN)
+        if self.msg:
+            ui.text(p, self.msg, x + 318, y + 140, self.msg_col, 8, True)
+        if self.done and not self.msg:
+            ui.text(p, "Calibrated.", x + 318, y + 140, GREEN, 8, True)
+        ui.text(p, "ESC leave", x + w - 62, y + h - 6, DIM, 6)
         p.restore()

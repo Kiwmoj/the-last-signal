@@ -28,16 +28,19 @@ def _noise(): return random.uniform(-1, 1)
 def _sounds():
     sq = lambda f, t: 1.0 if math.sin(2 * math.pi * f * t) > 0 else -1.0
     sine = lambda f, t: math.sin(2 * math.pi * f * t)
+    bell = lambda f, t, d: (sine(f, t) + .4 * sine(2.76 * f, t) * math.exp(-t * 6) + .2 * sine(5.4 * f, t) * math.exp(-t * 12)) * math.exp(-t * d)
+    voice = lambda f, t, u: (sine(f, t) + .6 * sine(2 * f + 40 * math.sin(t * 60), t) + .35 * sine(3.1 * f, t)) * (math.sin(math.pi * u) ** .6)
     return {
         "blip": _render(lambda t, u: .35 * sq(820 + 60 * math.sin(t * 90), t) * (1 - u) ** 2, .035),
-        "click": _render(lambda t, u: .5 * _noise() * (1 - u) ** 3, .05),
-        "tune": _render(lambda t, u: (.28 * sine(260 + 900 * u * u, t) + .18 * _noise() * (1 - u)) * math.sin(math.pi * u), .45),
+        "click": _render(lambda t, u: .38 * _noise() * (1 - u) ** 5 + .22 * sine(1400, t) * (1 - u) ** 8, .045),
+        "tune": _render(lambda t, u: (.22 * sine(220 + 700 * u * u, t) + .08 * sine(440 + 1400 * u * u, t) + .14 * _noise() * (1 - u) ** 1.5) * math.sin(math.pi * u), .5),
         "static": _render(lambda t, u: .35 * _noise() * math.sin(math.pi * u), .3),
-        "ok": _render(lambda t, u: .4 * sine((523, 659, 784, 1046)[min(3, int(u * 4))], t) * (1 - u) ** 1.2, .55),
-        "bad": _render(lambda t, u: .4 * sq(110 - 30 * u, t) * (1 - u), .35),
-        "pickup": _render(lambda t, u: .4 * sine(500 + 700 * u, t) * (1 - u), .2),
-        "door": _render(lambda t, u: (.45 * sine(55 + 25 * math.sin(t * 8), t) + .25 * _noise()) * math.sin(math.pi * u), .9),
-        "note": _render(lambda t, u: .3 * sine(880, t) * (1 - u) ** 2, .12),
+        "ok": _render(lambda t, u: .28 * (bell(523, t, 3) + bell(659, max(0, t - .09), 3) * (t > .09) + bell(784, max(0, t - .18), 3.5) * (t > .18)), .8),
+        "bad": _render(lambda t, u: .4 * (sine(98, t) * (1 - u) ** 2 + .6 * sine(73, max(0, t - .12)) * (t > .12) * (1 - u)), .4),
+        "pickup": _render(lambda t, u: .3 * bell(880 + 500 * u, t, 6) + .15 * _noise() * (1 - u) ** 12, .3),
+        "door": _render(lambda t, u: (.5 * sine(48 + 18 * math.sin(t * 6), t) * math.sin(math.pi * min(1, u * 1.6)) + .22 * _noise() * math.sin(math.pi * u) * (.5 + .5 * sine(9, t))
+                                      + (.5 * sine(70, max(0, t - .72)) * math.exp(-max(0, t - .72) * 14) if t > .72 else 0)), 1.0),
+        "note": _render(lambda t, u: .26 * bell(880, t, 9), .22),
         "hum": _render(lambda t, u: .22 * _noise() * .6 + .12 * sine(60, t) + .08 * sine(120, t), 1.0),
         "alert": _render(lambda t, u: .38 * sq((880, 0, 660, 0, 880)[min(4, int(u * 5))] or 1, t) * (1.0 if int(u * 5) % 2 == 0 else 0.0), .6),
         "thud": _render(lambda t, u: .7 * sine(52 - 20 * u, t) * (1 - u) ** 2 + .25 * _noise() * (1 - u) ** 6, .7),
@@ -45,17 +48,22 @@ def _sounds():
         "rise": _render(lambda t, u: (.25 * sine(120 + 700 * u * u, t) + .15 * _noise()) * u, 1.4),
         "scan": _render(lambda t, u: .3 * sine(300 + 1500 * (1 - abs(2 * u - 1)), t) * math.sin(math.pi * u), .5),
         # footsteps differ per frequency, plus a rare ambient sound for each world
-        "step_p": _render(lambda t, u: .5 * _noise() * (1 - u) ** 4 * .6 + .3 * sine(90, t) * (1 - u) ** 3, .09),
-        "step_pa": _render(lambda t, u: .4 * _noise() * (1 - u) ** 8 + .25 * sine(1800, t) * (1 - u) ** 6, .05),
-        "step_u": _render(lambda t, u: .3 * sine(400 + 500 * u, t) * (1 - u) ** 2, .12),
+        "step_p": _render(lambda t, u: .4 * _noise() * (1 - u) ** 5 * .6 + .28 * sine(85, t) * (1 - u) ** 4, .1),
+        "step_pa": _render(lambda t, u: .3 * _noise() * (1 - u) ** 9 + .2 * sine(1500, t) * (1 - u) ** 7 + .15 * sine(90, t) * (1 - u) ** 4, .07),
+        "step_u": _render(lambda t, u: .22 * bell(420 + 300 * u, t, 12), .16),
         "creak": _render(lambda t, u: (.2 * sine(120 + 60 * math.sin(t * 11), t) + .05 * _noise()) * math.sin(math.pi * u), .6),
-        "drip": _render(lambda t, u: .35 * sine(1200 - 700 * u, t) * (1 - u) ** 3, .25),
+        "drip": _render(lambda t, u: .32 * bell(1250 - 650 * u, t, 14), .3),
         "whisper": _render(lambda t, u: .12 * _noise() * math.sin(math.pi * u) * (.5 + .5 * sine(7, t)), .9),
+        # garbled "speech" played while radio / voice text types out (three different voices of syllable)
+        "voice_a": _render(lambda t, u: .16 * voice(150, t, u) + .05 * _noise(), .07),
+        "voice_b": _render(lambda t, u: .16 * voice(190, t, u) + .05 * _noise(), .06),
+        "voice_c": _render(lambda t, u: .16 * voice(125, t, u) + .05 * _noise(), .08),
+        "latch": _render(lambda t, u: .4 * _noise() * (1 - u) ** 10 + .3 * sine(180, t) * (1 - u) ** 6, .09),
     }
 
 
 NAMES = ("blip", "click", "tune", "static", "ok", "bad", "pickup", "door", "note", "hum", "alert", "thud", "crackle", "rise", "scan",
-         "step_p", "step_pa", "step_u", "creak", "drip", "whisper")
+         "step_p", "step_pa", "step_u", "creak", "drip", "whisper", "voice_a", "voice_b", "voice_c", "latch")
 
 # ---- background music -------------------------------------------------------------------------------------
 # Moods: menu / control (Control Room) / explore / unknown (121.3 MHz) / revelation (story discoveries, the chamber)
@@ -88,7 +96,7 @@ class Audio:
         if QSoundEffect is None:
             return
         try:
-            folder = os.path.join(tempfile.gettempdir(), "the_last_signal_audio_v2")
+            folder = os.path.join(tempfile.gettempdir(), "the_last_signal_audio_v3")
             os.makedirs(folder, exist_ok=True)
             cached = all(os.path.exists(os.path.join(folder, n + ".wav")) for n in NAMES)
             sounds = {} if cached else _sounds()      # synthesised once, then reused from the cache folder

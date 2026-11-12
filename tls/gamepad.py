@@ -78,6 +78,8 @@ class Gamepad:
     # ---- turning the pad into key events ----
     def _apply(self, mask):
         g = self.game
+        if mask & ~self.prev:
+            g.keymap.pad_mode = True                      # a button was pressed: show controller prompts from now on
         new = mask & ~self.prev
         for name, key in (("up", K.Key_Up), ("down", K.Key_Down), ("left", K.Key_Left), ("right", K.Key_Right)):
             down = bool(mask & BTN[name])

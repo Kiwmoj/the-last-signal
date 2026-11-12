@@ -179,6 +179,10 @@ class GameplayScene(Scene):
     def audio(self):
         return self.game.audio
 
+    def kb(self, action):
+        """The key or gamepad button for an action, shown in brackets, e.g. [E] on the keyboard or [A] on a controller."""
+        return "[" + self.game.keymap.name(action) + "]"
+
     def say(self, text, secs=3.5):
         """Show a message. If another is still on screen, wait for it instead of overwriting it (the queue is kept short)."""
         if self.toast_t > .8 and text != self.toast:
@@ -194,7 +198,7 @@ class GameplayScene(Scene):
         """Add a journal entry (tuple from the world/story data). Announces new discoveries."""
         if clue and self.journal.add_tuple(clue):
             self.flags.add("clue_" + clue[0])        # lets the Echo Receiver stop pointing at clues you already found
-            self.say("Journal updated  [J]", 3)
+            self.say("Journal updated  " + self.kb("journal"), 3)
             self.audio.play("note")
             for pid, name, text in PEOPLE.get(clue[0], ()):
                 self.journal.add(pid, name, text, "person")
@@ -379,7 +383,7 @@ class GameplayScene(Scene):
         self.flags.add("radio_used")
         self.audio.play("click")
         if self.radio_on:
-            self.say(f"RADIO ONLINE  {FREQS[self.idx]} MHz   [Q] to tune", 3)
+            self.say(f"RADIO ONLINE  {FREQS[self.idx]} MHz   {self.kb('tune')} to tune", 3)
             self.ring_t = 0
             self.statics = max(self.statics, .6)
         else:
@@ -466,7 +470,7 @@ class GameplayScene(Scene):
         pl = self.player
         if 150 <= pl.y <= 200 and ((ix > 0 and 366 < pl.x < 390) or (ix < 0 and 412 < pl.x < 436)):
             self._bump_t = 4.0
-            self.say("The doorway is collapsed. " + ("Tune to 104.7 MHz  [Q]" if self.radio_on else "Radio on [SPACE], then tune to 104.7 MHz  [Q]"), 3.5)
+            self.say("The doorway is collapsed. " + ("Tune to 104.7 MHz  " + self.kb("tune") if self.radio_on else "Radio on " + self.kb("radio") + ", then tune to 104.7 MHz  " + self.kb("tune")), 3.5)
             self.audio.play("bad", .4)
 
     def _track_safe(self):
@@ -579,6 +583,10 @@ class GameplayScene(Scene):
             self.audio.play("pickup")
             self.learn(("fuse", "The spare fuse", "Found a spare fuse in the Unknown. It belongs in the Main Transmitter, which only shows its fuse slot on 104.7."))
             lines.append("It must belong in the transmitter, but the transmitter is on the other side of the rubble.")
+        elif act == "calibrate":
+            from .puzzles import CalibrationScene
+            self.game.push(CalibrationScene(self.game, self))
+            return
         elif act == "safe":
             if "safe_open" in self.flags:
                 lines = ["The safe is empty now. Nora's letter and cassette are in your journal and your Echo's memory."]
@@ -667,7 +675,11 @@ class GameplayScene(Scene):
         self.player.update(dt, ix, iy, self.solids())
         self._track_safe()
         if self.dialog and self.dialog.update(dt):
-            self.audio.play("blip", .5)
+            st = self.dialog.style
+            if st in ("radio", "voice"):                   # transmissions sound like garbled speech; plain text keeps the soft blip
+                self.audio.play(random.choice(("voice_a", "voice_b", "voice_c")), .7 if st == "radio" else .5)
+            else:
+                self.audio.play("blip", .5)
         self.focus = None if (self.dialog or self.frozen) else self._find_focus()
         self.audio.set_hum((.25 + .75 * (1 - self.signal)) * (.5 + .5 * self.statics) if self.radio_on else 0)
         self.audio.set_mood(self._music_mood())
@@ -685,7 +697,7 @@ class GameplayScene(Scene):
         self.mission_toast = max(0.0, self.mission_toast - dt)
         if "tut_move" in self.flags and "guide_told" not in self.flags and not self.dialog and not self.current_event and not self.events:
             self.flags.add("guide_told")
-            self.say("Gold arrows show where to go.  [H] hides them", 4.5)
+            self.say("Gold arrows show where to go.  " + self.kb("guide") + " hides them", 4.5)
         if self.player.x > 130 and self.zone == "CONTROL ROOM":
             self.flags.add("entered")
         if self.zone == "RESEARCH WING":
@@ -1090,9 +1102,9 @@ class GameplayScene(Scene):
         if self.focus:
             pr = self.focus
             spec = pr.spec(self.freq)
-            label = f"[E]  {spec['verb']} {spec['name']}"
+            label = f"{self.kb('interact')}  {spec['verb']} {spec['name']}"
             if pr.action == "door" and "fixed" in self.flags:
-                label = f"[E]  Send {FREQS[self.freq]} MHz tone"
+                label = f"{self.kb('interact')}  Send {FREQS[self.freq]} MHz tone"
             wpx = len(label) * 6 + 24
             bob = math.sin(t * 6) * 1.5
             ui.panel(p, W / 2 - wpx / 2, 232 + bob, wpx, 22, AMBER)
@@ -1122,7 +1134,7 @@ class GameplayScene(Scene):
             others = [FREQS[b] for b in range(3) if b != band and self.targets(b)]
             ui.text(p, "NO SIGNAL HERE", x + 6, y + 26, DIM, 7)
             if others:
-                ui.text(p, "Try " + " / ".join(str(o) for o in others) + " MHz  [Q]", x + 6, y + 37, AMBER, 6)
+                ui.text(p, "Try " + " / ".join(str(o) for o in others) + " MHz  " + self.kb("tune"), x + 6, y + 37, AMBER, 6)
             return
         ang = math.atan2(n[2], n[1])
         cx, cy = x + 20, y + 28
@@ -1282,7 +1294,7 @@ class GameplayScene(Scene):
     def toggle_guide(self):
         s = self.game.save.settings
         s["guide_arrows"] = not s.get("guide_arrows", True)
-        self.say("Guide arrows " + ("ON" if s["guide_arrows"] else "OFF") + "  [H]", 2)
+        self.say("Guide arrows " + ("ON" if s["guide_arrows"] else "OFF") + "  " + self.kb("guide"), 2)
         self.audio.play("click")
 
     def _draw_marker(self, p, cx, cy):
@@ -1349,7 +1361,7 @@ class GameplayScene(Scene):
             blink = "radio_used" not in self.flags and int(t * 2) % 2 == 0
             ui.panel(p, x, y, w, 22, DIM)
             ui.text(p, "RADIO OFF", x + 8, y + 15, DIM, 8, True)
-            ui.text(p, "[SPACE] activate", x + 82, y + 15, AMBER if blink else DIM, 7)
+            ui.text(p, self.kb("radio") + " activate", x + 82, y + 15, AMBER if blink else DIM, 7)
             return
         f = self.idx
         col = QColor(*TINT[f])
@@ -1384,4 +1396,4 @@ class GameplayScene(Scene):
             p.fillRect(int(px) - 1, y + 54, 3, 3, QColor(*TINT[i]))
         nx = sx0 + max(0, min(1, (self.dial - 86) / 38)) * sw
         p.fillRect(int(nx), y + 53, 1, 12, QColor(255, 255, 255, 230))
-        ui.text(p, "[Q] tune   [SPACE] off", x + 8, y + 82, DIM, 7)
+        ui.text(p, self.kb("tune") + " tune   " + self.kb("radio") + " off", x + 8, y + 82, DIM, 7)

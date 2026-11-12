@@ -31,8 +31,12 @@ def key_name(k):
 
 
 class Keymap:
+    PAD = {"interact": "A", "radio": "X", "tune": "LB", "echo": "RB", "journal": "Y", "hint": "BACK", "guide": "-", "torch": "-",
+           "up": "STICK", "down": "STICK", "left": "STICK", "right": "STICK"}
+
     def __init__(self, settings):
         self.settings = settings
+        self.pad_mode = False             # True after the last input came from a gamepad: prompts then show its button names
 
     def _store(self):
         return self.settings.setdefault("keys", {})
@@ -52,6 +56,8 @@ class Keymap:
         return None
 
     def name(self, action):
+        if self.pad_mode and self.PAD.get(action, "-") != "-":
+            return self.PAD[action]
         return key_name(self.primary(action))
 
     def allowed(self, key):

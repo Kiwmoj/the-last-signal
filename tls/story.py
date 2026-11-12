@@ -65,6 +65,10 @@ PUZZLES = [
      "A small safe in the research wing is marked with a child's handwriting: count what Nora drew. Her three drawings hang in three different rooms, "
      "and each shows its picture clearly on only one frequency.",
      "Inside: a letter from Nora, written the week it began, and her cassette."),
+    ("cal_done", "Signal Calibration",
+     "A calibration console in the Archive shows a target waveform from Dr. Wren's last test. Match its frequency and strength by tuning, and hold the match steady. "
+     "Three waveforms, each harder to find than the last.",
+     "The console accepts the calibration and prints Wren's last letter. Her tape was still inside."),
     ("chamber_open", "The Chamber Lock",
      "The chamber opens to the date everything began. The station wrote it in three places, one per layer: the day, the month and the year.",
      "The Transmission Chamber is open."),
@@ -146,6 +150,9 @@ TERMINAL = {
         ("COUNTDOWN.DAT", "+revealed",
          "T - 00:00:00.   N O T H I N G   E N D S   H E R E.   Y O U   C A N   C H O O S E   W H A T   T H E   S I G N A L   S A Y S.",
          ("countdown", "The countdown", "At the bottom of the Unknown band a counter has stopped at zero. The file says you can choose what the signal says.")),
+        ("CALIBRATE.DAT", "+archive_open",
+         "WREN, LAST TEST: 'THE CONSOLE IN THE ARCHIVE LISTENS TO THE VOICE AND DRAWS IT. MATCH ITS FREQUENCY AND ITS STRENGTH, THEN HOLD STEADY. THREE WAVEFORMS.'",
+         ("calibrate_hint", "The Archive console", "A file says the calibration console in the Archive draws the unknown voice. Match its frequency and strength and hold steady, for three waveforms.")),
     ],
 }
 
@@ -269,8 +276,23 @@ DECISION = {
     "silence": ("SHUT IT DOWN",
                 "Cut the power. The signal ends after seventeen years. What happened in 1980 stays as it was, "
                 "and you walk out with the truth."),
+    "echo": ("ANSWER THE VOICE",
+             "You carry Wren's letter, Nora's secret and Elias's apology. Do not warn it, do not silence it. Answer it."),
 }
+SECRET_FLAGS = ("locker_open", "safe_open", "cal_done")          # every optional puzzle reward unlocks the third choice
+
+
+def endings_total(seen):
+    """'of 2' until the secret ending has been found, so the menu does not spoil it."""
+    return 3 if "echo" in seen else 2
+
+
 ENDINGS = {
+    "echo": ("ENDING: THE ECHO", (190, 120, 255), [
+        "You do not send a warning, and you do not cut the power. You lean to the microphone and say the one thing nobody has said to the voice in seventeen years: 'I hear you.'",
+        "On the unknown band, a long breath. Then Wren's calibration holds steady, Nora's cassette plays in the dark, and Elias's apology finally reaches the voice. The loop does not break. It finishes.",
+        "The coils glow once, softly, and every dial settles on 88.1. Three people who never met the voice hear it say, together with you: 'Thank you for listening.'",
+        "Dawn. Station 09 is quiet, and the quiet is warm. At the gate a woman in her forties waits with a child's drawing of a sun with nine rays. 'My father said someone would answer,' says Nora."]),
     "warn": ("ENDING: THE WARNING", (255, 210, 120), [
         "You key the transmitter and speak what Elias never heard: your name, the date, and the one fact he cannot ignore. 'Nora is safe. Close the archive.'",
         "Seventeen years collapse into a single breath. Somewhere in 1980, a man lowers his hand from a lever.",

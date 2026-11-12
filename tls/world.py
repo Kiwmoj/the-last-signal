@@ -249,6 +249,8 @@ class World:
               lines=["A sheet of grey paper pinned to the shelves. It is smudged beyond reading on this side of time."],
               alt={2: {"style": "voice", "lines": ["A child's crayon drawing of the night sky: SEVEN stars and a tiny radio tower. 'listen'."],
                        "clue": ("sf_3", "Safe digit 3: 7", "Archive drawing, 121.3 MHz: seven stars over a little radio tower. 'listen'.", "key")}}),
+            P("calibrator", 840, 164, 28, 22, name="Calibration Console", verb="Use", action="calibrate", style="terminal", lines=[
+                "A bulky console with a green waveform scope and two big dials, labelled FREQ and STRENGTH. A sticky note: 'Dr. Wren, last test. Match the target and hold it.'"]),
             P("sidetable", 66, 140, 46, 22, name=None),
             P("echorecv", 82, 134, 14, 30, solid=False, name="Echo Receiver", verb="Pick up", action="echo_pickup",
               hide_if="echo_found", zone=(60, 120, 60, 60), lines=list(ECHO_PICKUP)),
@@ -953,6 +955,18 @@ def _board(p, pr, t, st):
     box(p, x + w - 11, y + h - 22, 1, 6, (170, 60, 60)); box(p, x + w - 6, y + h - 22, 1, 6, (170, 60, 60))
 
 
+def _calibrator(p, pr, t, st):
+    x, y, w, h = pr.rect.x(), pr.rect.y(), pr.rect.width(), pr.rect.height()
+    box(p, x, y, w, h, (52, 58, 72)); box(p, x, y, w, 1, (110, 122, 144)); box(p, x, y + h - 3, w, 3, (30, 34, 44))
+    box(p, x + 3, y + 3, 16, 10, (4, 14, 10))                                   # scope screen
+    ph = t * 3 if "cal_done" not in st.flags else 0
+    for i in range(14):
+        yy = int(y + 8 + math.sin(i * .7 + ph) * 3)
+        box(p, x + 4 + i, yy, 1, 1, (90, 255, 150))
+    box(p, x + 21, y + 5, 4, 4, (180, 190, 205)); box(p, x + 21, y + 11, 4, 4, (180, 190, 205))   # the two dials
+    box(p, x + 22, y + 6, 1, 2, (40, 44, 56)); box(p, x + 23, y + 12, 1, 2, (40, 44, 56))
+
+
 def _drawing(p, pr, t, st):
     """A child's crayon drawing pinned to the wall: paper, a few crayon strokes (colours differ per position)."""
     x, y = pr.rect.x(), pr.rect.y()
@@ -1260,7 +1274,7 @@ def _rack09(p, pr, t, st):
 _DRAW = {"console": _console, "computer": _computer, "rack": _rack, "table": _table,
          "chair": _chair, "cabinet": _cabinet, "shelf": _shelf, "crate": _crate,
          "plant": _plant, "artifact": _artifact, "door": _door, "switch": _switch,
-         "rubble": _rubble, "board": _board, "locker": _locker, "drawing": _drawing, "safe": _safe, "arch": _arch, "echo": _echo, "veil": _veil, "fuse": _fuse,
+         "rubble": _rubble, "board": _board, "locker": _locker, "drawing": _drawing, "safe": _safe, "calibrator": _calibrator, "arch": _arch, "echo": _echo, "veil": _veil, "fuse": _fuse,
          "glyphs": _glyphs, "sigil": _sigil, "plaque": _plaque, "beacon": _beacon, "mural": _mural,
          "oldradio": _oldradio, "notebook": _notebook, "secdoor": _secdoor, "archive": _archive,
          "receiver": _receiver, "sidetable": _sidetable, "echorecv": _echorecv, "source": _source,

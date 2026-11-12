@@ -171,6 +171,7 @@ class GameWindow(QWidget):
         if e.isAutoRepeat():
             return
         k = e.key()
+        self.keymap.pad_mode = False                  # a real keyboard press switches the prompts back to key names
         if k == Qt.Key.Key_F11:
             self.set_fullscreen(not self.isFullScreen())
             return
