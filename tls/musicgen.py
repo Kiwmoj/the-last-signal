@@ -251,6 +251,83 @@ def chapter():
 TRACKS = (("menu", menu), ("control", control), ("explore", explore), ("unknown", unknown), ("revelation", revelation), ("chapter", chapter))
 
 
+# ======================================================================================================================
+# Calm piano soundtrack (the one the game uses). Soft piano notes, long silences and a little echo, all original.
+# Every note is written straight into a buffer of exactly the loop length and wraps around its end, so loops are seamless.
+# ======================================================================================================================
+def _piano_into(buf, t0, midi, amp, dur=4.0, detune=0.0):
+    n = len(buf)
+    f = hz(midi) * (1 + detune)
+    i0 = int(t0 * RATE)
+    for k in range(int(dur * RATE)):
+        d = k / RATE
+        att = min(1.0, d * 120)
+        e = math.exp(-d * 1.1)
+        v = (sin(TAU * f * d) * e + .38 * sin(TAU * 2 * f * d) * math.exp(-d * 2.0) + .14 * sin(TAU * 3.01 * f * d) * math.exp(-d * 3.4)) * att
+        buf[(i0 + k) % n] += v * amp
+
+
+def _note(buf, t, midi, amp, echo=True, detune=0.0):
+    _piano_into(buf, t, midi, amp, 4.0, detune)
+    if echo:                                                   # a soft room echo
+        _piano_into(buf, t + .55, midi, amp * .30, 2.4, detune)
+        _piano_into(buf, t + 1.15, midi, amp * .12, 1.6, detune)
+
+
+def _calm(L, bars, chords, scale, seed, density=.6, melody=.5, amp=.16, bass=True, detune=0.0, hiss=.0, drone=None):
+    buf = [0.0] * int(L * RATE)
+    rnd = random.Random(seed)
+    bar = L / bars
+    for b in range(bars):
+        chord = chords[b % len(chords)]
+        t = b * bar
+        if bass:
+            _note(buf, t + rnd.uniform(0, .1), chord[0] - 12, amp * .9, True, detune)
+        for i, nn in enumerate(chord[1:]):
+            if rnd.random() < density:
+                _note(buf, t + .5 + i * bar * .22 + rnd.uniform(0, .15), nn, amp * rnd.uniform(.55, .85), True, detune)
+        if rnd.random() < melody:
+            _note(buf, t + bar * rnd.uniform(.35, .8), rnd.choice(scale) + 12, amp * .75, True, detune)
+    if drone:                                                   # a very quiet held tone under the piano
+        fd = snap(hz(drone), L)
+        for i in range(len(buf)):
+            buf[i] += .03 * sin(TAU * fd * i / RATE)
+    if hiss:
+        nz = 0.0
+        for i in range(len(buf)):
+            nz += (rnd.uniform(-1, 1) - nz) * .15
+            buf[i] += nz * hiss
+    return buf
+
+
+def menu():                                                    # warm and open, C major
+    return _calm(48.0, 12, [[48, 60, 64, 67, 71], [45, 57, 60, 64, 67], [41, 53, 57, 60, 64], [43, 55, 59, 62, 65]],
+                 [72, 74, 76, 79, 81], 11, density=.65, melody=.6, amp=.16, drone=36)
+
+
+def control():                                                 # quieter and lower, with distant radio hiss
+    return _calm(40.0, 10, [[38, 50, 53, 57], [34, 46, 50, 53], [36, 48, 52, 55], [31, 43, 47, 50]],
+                 [62, 65, 67, 69, 72], 22, density=.45, melody=.4, amp=.13, hiss=.012, drone=26)
+
+
+def explore():                                                 # gentle and curious, A minor into F
+    return _calm(56.0, 14, [[45, 57, 60, 64, 67], [41, 53, 57, 60, 64], [48, 60, 64, 67, 71], [43, 55, 59, 62, 67]],
+                 [69, 72, 74, 76, 79, 81], 33, density=.7, melody=.7, amp=.15, drone=33)
+
+
+def unknown():                                                 # the same piano, a little out of tune, with an unresolved note
+    return _calm(32.0, 8, [[45, 57, 60, 66], [42, 54, 57, 63], [46, 58, 62, 68], [40, 52, 56, 62]],
+                 [66, 69, 70, 75, 78], 44, density=.55, melody=.7, amp=.14, detune=.012, hiss=.01, drone=33)
+
+
+def revelation():                                              # slow and weighty, low piano under a held note
+    return _calm(24.0, 6, [[36, 48, 51, 55, 58], [32, 44, 48, 51, 55], [34, 46, 50, 53, 57]],
+                 [60, 63, 65, 67, 70], 55, density=.5, melody=.6, amp=.17, drone=24)
+
+
+TRACKS = (("menu", menu), ("control", control), ("explore", explore), ("unknown", unknown), ("revelation", revelation), ("chapter", chapter))
+
+
 def write(path, samples):
     peak = max(1e-6, max(abs(s) for s in samples))
     rms = math.sqrt(sum(s * s for s in samples) / len(samples)) or 1e-6
