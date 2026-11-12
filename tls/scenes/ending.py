@@ -86,6 +86,8 @@ class EndingScene(Scene):
         seen = self.game.save.data.setdefault("endings", [])
         if self.kind not in seen:
             seen.append(self.kind)
+        from ..achievements import check as check_achievements
+        check_achievements(gp)
         gp.flags -= {"decision", "decision_warn", "decision_silence", "m_c5m4", "ch5_done"}
         gp.save_progress()
         self.game.audio.set_music(0)
@@ -125,8 +127,10 @@ class EndingScene(Scene):
             ui.text_spaced(p, "THE END", W / 2, H / 2 - 4, QColor(self.col[0], self.col[1], self.col[2], int(255 * a)), 18, 6, True, True)
             seen = self.game.save.data.get("endings", [])
             ui.text(p, f"Endings found: {len(set(seen))} of 2", W / 2 - 52, H / 2 + 20, QColor(150, 165, 185, int(220 * a)), 8)
+            from ..achievements import completion
+            ui.text(p, f"Achievements: {completion(self.game.save)}% complete", W / 2 - 60, H / 2 + 32, QColor(150, 165, 185, int(220 * a)), 8)
             if len(set(seen)) < 2:
-                ui.text(p, "Choose Continue to try the other decision.", W / 2 - 96, H / 2 + 34, QColor(120, 135, 155, int(200 * a)), 7)
+                ui.text(p, "Choose Continue to try the other decision.", W / 2 - 96, H / 2 + 46, QColor(120, 135, 155, int(200 * a)), 7)
             ui.text(p, "[ENTER] main menu", W / 2 - 40, H - 14, DIM, 7)
 
     def _credits(self, p):

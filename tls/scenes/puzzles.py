@@ -12,7 +12,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
 
 from ..constants import CYAN, AMBER, TEXT, DIM, GREEN, RED
-from ..story import (PASSWORD, CHAMBER_CODE, LOCKER_CODE, FRAG_ORDER, RADIO_FRAGMENTS, RADIO_VOICES, RADIO_RESTORED, RECEIVER_PULSES,
+from ..story import (PASSWORD, CHAMBER_CODE, LOCKER_CODE, SAFE_CODE, FRAG_ORDER, RADIO_FRAGMENTS, RADIO_VOICES, RADIO_RESTORED, RECEIVER_PULSES,
                      RECEIVER_ORDER, RECEIVER_DECODE, REWARD)
 from ..world import FREQS, FREQ_NAMES, TINT
 from .. import ui
@@ -254,6 +254,26 @@ LOCKER_CFG = dict(
             "I hid the date where the station would show it to anyone who listened closely: one layer each. I should have burned the archive.'", "clue")],
     tape=("locker_tape", 1, "Maintenance tape 2-A",
           "WREN: 'Three thirty-three. Elias has the archive open and he will not stop. The receiver is answering, and the voice on it is not one of ours.'"))
+
+
+SAFE_CFG = dict(
+    title="WING SAFE  //  RESEARCH WING", answer=SAFE_CODE, digits_only=True, maxlen=3, flag="safe_open",
+    puzzle_title="The Wing Safe",
+    intro="Three digits. A child's handwriting on the door says: count what Nora drew. Her drawings are in three rooms, and each only shows clearly on one frequency. "
+          "Type digits in order, then press ENTER.",
+    hint="SYSTEM HINT: the Control Room drawing (104.7) first, then the Offices drawing (88.1), then the Archive drawing (121.3). Count the rays, the trees, the stars.",
+    notes=("sf_rule", "sf_1", "sf_2", "sf_3"),
+    notes_empty="Nothing yet. Look for Nora's drawings on the walls.",
+    key_id="key_safe", key_title=f"Wing Safe code: {SAFE_CODE}",
+    key_text=f"The Wing Safe opened with {SAFE_CODE}: nine sun rays, one tree, seven stars.",
+    who="WING SAFE",
+    granted=["CLICK. The little door swings open.",
+             "A folded letter in a child's handwriting, and a cassette marked 'NORA'."],
+    extra=[("nora_letter", "Nora's letter",
+            "'Dear Daddy, the radio talks to me at night. It sounds like a tired grown-up and it says sorry a lot. "
+            "Last night it said: do not open the archive. Is that a game? Please come home early. Love, Nora.'", "clue")],
+    tape=("safe_tape", 0, "Nora's cassette",
+          "NORA: 'Daddy, I told the radio a secret so it would stop being sad. I said I would remember its voice. I think it was somebody I haven't met yet.'"))
 
 
 class PasswordScene(Overlay):

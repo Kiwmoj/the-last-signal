@@ -4,6 +4,7 @@ import math
 import os
 import random
 import struct
+import sys
 import tempfile
 import wave
 
@@ -43,10 +44,18 @@ def _sounds():
         "crackle": _render(lambda t, u: (_noise() * (1.0 if random.random() < .05 else 0.0)) * .6, .35),
         "rise": _render(lambda t, u: (.25 * sine(120 + 700 * u * u, t) + .15 * _noise()) * u, 1.4),
         "scan": _render(lambda t, u: .3 * sine(300 + 1500 * (1 - abs(2 * u - 1)), t) * math.sin(math.pi * u), .5),
+        # footsteps differ per frequency, plus a rare ambient sound for each world
+        "step_p": _render(lambda t, u: .5 * _noise() * (1 - u) ** 4 * .6 + .3 * sine(90, t) * (1 - u) ** 3, .09),
+        "step_pa": _render(lambda t, u: .4 * _noise() * (1 - u) ** 8 + .25 * sine(1800, t) * (1 - u) ** 6, .05),
+        "step_u": _render(lambda t, u: .3 * sine(400 + 500 * u, t) * (1 - u) ** 2, .12),
+        "creak": _render(lambda t, u: (.2 * sine(120 + 60 * math.sin(t * 11), t) + .05 * _noise()) * math.sin(math.pi * u), .6),
+        "drip": _render(lambda t, u: .35 * sine(1200 - 700 * u, t) * (1 - u) ** 3, .25),
+        "whisper": _render(lambda t, u: .12 * _noise() * math.sin(math.pi * u) * (.5 + .5 * sine(7, t)), .9),
     }
 
 
-NAMES = ("blip", "click", "tune", "static", "ok", "bad", "pickup", "door", "note", "hum", "alert", "thud", "crackle", "rise", "scan")
+NAMES = ("blip", "click", "tune", "static", "ok", "bad", "pickup", "door", "note", "hum", "alert", "thud", "crackle", "rise", "scan",
+         "step_p", "step_pa", "step_u", "creak", "drip", "whisper")
 
 # ---- background music -------------------------------------------------------------------------------------
 # Moods: menu / control (Control Room) / explore / unknown (121.3 MHz) / revelation (story discoveries, the chamber)
@@ -57,7 +66,11 @@ MOODS = ("menu", "control", "explore", "unknown", "revelation", "chapter")
 MOOD_GAIN = {"menu": .55, "control": .5, "explore": .55, "unknown": .55, "revelation": .65, "chapter": .7}
 FADE_IN, FADE_OUT = .30, .45        # volume units per second: a track takes about a second to fade out, then the next fades in
 MUSIC_CACHE = os.path.join(tempfile.gettempdir(), "the_last_signal_music_v1")
+_FROZEN = getattr(sys, "frozen", False)          # running as a packaged .exe
 MUSIC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "music")
+# search order: a music/ folder next to the game (your own WAVs), the music bundled inside the .exe, then the generated cache
+MUSIC_DIRS = ([os.path.join(os.path.dirname(sys.executable), "music"), os.path.join(getattr(sys, "_MEIPASS", ""), "music")] if _FROZEN
+              else [MUSIC_DIR]) + [MUSIC_CACHE]
 
 
 class Audio:
@@ -101,8 +114,8 @@ class Audio:
     def _start_music_generator(self):
         """Synthesise the soundtrack in a background process (the first run only) so the game never stalls."""
         try:
-            if all(os.path.exists(os.path.join(MUSIC_CACHE, m + ".wav")) for m in MOODS):
-                return
+            if _FROZEN or all(os.path.exists(os.path.join(MUSIC_CACHE, m + ".wav")) for m in MOODS):
+                return                                  # the .exe ships its music; nothing to generate
             import subprocess
             import sys
             flags = 0x08000000 if os.name == "nt" else 0         # CREATE_NO_WINDOW
@@ -116,7 +129,8 @@ class Audio:
         e = self.tracks.get(mood)
         if e is not None or QSoundEffect is None:
             return e
-        for path in (os.path.join(MUSIC_DIR, mood + ".wav"), os.path.join(MUSIC_CACHE, mood + ".wav")):
+        for folder in MUSIC_DIRS:
+            path = os.path.join(folder, mood + ".wav")
             if os.path.exists(path):
                 try:
                     e = QSoundEffect()

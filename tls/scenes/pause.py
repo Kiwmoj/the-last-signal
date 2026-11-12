@@ -26,6 +26,8 @@ class PauseScene(Scene):
         K = Qt.Key
         if k == K.Key_Escape:
             self.game.pop()
+        elif k == K.Key_M:
+            self.quit_to_menu()
         elif k in (K.Key_W, K.Key_Up):
             self.sel = (self.sel - 1) % len(self.ITEMS)
         elif k in (K.Key_S, K.Key_Down):
@@ -50,9 +52,15 @@ class PauseScene(Scene):
                 from .settings import SettingsScene
                 self.game.push(SettingsScene(self.game))
             else:
-                self.gp.save_progress()
-                self.game.pop()
-                self.game.pop()
+                self.quit_to_menu()
+
+    def quit_to_menu(self):
+        """Save, then go back to the main menu no matter how the game was started."""
+        from .menu import MenuScene
+        self.gp.save_progress()
+        self.game.audio.set_hum(0)
+        menu = next((s for s in self.game.scenes if isinstance(s, MenuScene)), None) or MenuScene(self.game)
+        self.game.scenes[:] = [menu]
 
     def draw(self, p):
         p.fillRect(0, 0, W, H, QColor(0, 0, 8, 160))
@@ -62,4 +70,4 @@ class PauseScene(Scene):
             on = i == self.sel
             ui.text(p, f"> {name} <" if on else name, W / 2, 92 + i * 18,
                     AMBER if on else TEXT, 9, on, True, on)
-        ui.text(p, self.msg, W / 2, 222, GREEN, 7, False, True)
+        ui.text(p, self.msg or "ESC resume    M main menu", W / 2, 222, GREEN if self.msg else DIM, 7, False, True)

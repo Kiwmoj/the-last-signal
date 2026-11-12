@@ -103,6 +103,7 @@ class GameplayScene(Scene):
         self.shift_t = 14.0
         self.mission_toast = 0.0
         self.debug = False                       # F3 overlay, only toggleable when launched with TLS_DEBUG=1
+        self._hint_mission, self._hint_level = None, 0
         # --- radio ---
         self.radio_on = False
         self.idx = 0
@@ -144,6 +145,9 @@ class GameplayScene(Scene):
         self.next_flash = random.uniform(5, 10)
         self.spark_t = 1.5
         self.step_t = 0.0
+        self.amb_sound_t = 8.0
+        self.torch = True                        # F: flashlight, only useful while the station is unpowered
+        self._glitch_t = 3.0
         self.fx = ParticleSystem()
         rnd = random.Random(11)
         self.dust = [[rnd.uniform(0, ANNEX_END), rnd.uniform(70, WORLD_H), rnd.uniform(-4, 4),
@@ -241,14 +245,14 @@ class GameplayScene(Scene):
         return (frozenset(self.flags), len(self.journal), len(self.memory), self.has_fuse, tuple(self.seq), frozenset(self.frags))
 
     def save_progress(self):
-        self.game.save.data["progress"] = {
+        self.game.save.set_progress({
             "x": self.player.x, "y": self.player.y, "lights": self.lights_on,
             "read": sorted(self.read), "minutes": self.minutes, "flags": sorted(self.flags),
             "fuse": self.has_fuse, "seq": self.seq, "heard": sorted(self.heard),
             "radio": self.radio_on, "idx": self.idx, "journal": self.journal.to_list(),
             "memory": self.memory.to_list(), "v": 2,
             "chapter": self.story.chapter().n,
-            "frags": sorted(self.frags), "objective": self.objective()}
+            "frags": sorted(self.frags), "objective": self.objective()})
         self.game.save.save()
         self._sig = self._progress_sig()
 
@@ -318,32 +322,39 @@ class GameplayScene(Scene):
 
     # ------------------------------------------------------------------ input
     def _input(self):
-        k, K = self.game.keys, Qt.Key
-        ix = (any(a in k for a in (K.Key_D, K.Key_Right))) - (any(a in k for a in (K.Key_A, K.Key_Left)))
-        iy = (any(a in k for a in (K.Key_S, K.Key_Down))) - (any(a in k for a in (K.Key_W, K.Key_Up)))
+        km, k = self.game.keymap, self.game.keys
+        ix = any(a in k for a in km.keys_for("right")) - any(a in k for a in km.keys_for("left"))
+        iy = any(a in k for a in km.keys_for("down")) - any(a in k for a in km.keys_for("up"))
         return ix, iy
 
     def key_press(self, k):
         K = Qt.Key
+        act = self.game.keymap.action(k)
         if k == K.Key_Escape:
             self.flags.add("pause_opened")
             from .pause import PauseScene
             self.game.push(PauseScene(self.game, self))
-        elif k == K.Key_H and not self.dialog:
+        elif act == "torch" and not self.dialog:
+            self.torch = not self.torch
+            self.say("Flashlight " + ("ON" if self.torch else "OFF") + "  [" + self.game.keymap.name("torch") + "]", 2)
+            self.audio.play("click")
+        elif act == "hint" and not self.dialog:
+            self.ask_hint()
+        elif act == "guide" and not self.dialog:
             self.toggle_guide()
         elif k == K.Key_F3 and os.environ.get("TLS_DEBUG") == "1":
             self.debug = not self.debug
-        elif k == K.Key_J and not self.dialog:
+        elif act == "journal" and not self.dialog:
             self.flags.add("journal_opened")
             from .journal import JournalScene
             self.game.push(JournalScene(self.game, self))
-        elif k == K.Key_R and not self.dialog:
+        elif act == "echo" and not self.dialog:
             if "echo_found" not in self.flags:
                 self.say("You have nothing to open yet. Look around the room.", 2.5)
             else:
                 from .echo_ui import EchoScene
                 self.game.push(EchoScene(self.game, self))
-        elif k == K.Key_E:
+        elif act == "interact":
             if self.dialog:
                 if self.dialog.advance():
                     d, self.dialog = self.dialog, None
@@ -351,9 +362,9 @@ class GameplayScene(Scene):
                         d.on_done()
             elif self.focus:
                 self._interact(self.focus)
-        elif k == K.Key_Space and not self.dialog:
+        elif act == "radio" and not self.dialog:
             self.toggle_radio()
-        elif k == K.Key_Q and not self.dialog:
+        elif act == "tune" and not self.dialog:
             self.cycle_radio()
 
     def toggle_radio(self):
@@ -431,7 +442,14 @@ class GameplayScene(Scene):
         return "control" if self.zone == "CONTROL ROOM" else "explore"
 
     def _bump_hint(self):
-        """Tell the player why the collapsed doorway will not let them through (instead of silently blocking)."""
+        """Tell the player why a blocked passage will not let them through (instead of silently blocking)."""
+        pl = self.player
+        # the fuse alcove is sealed except on 121.3: explain it if the player retunes while inside
+        if self.eff != 2 and 568 < pl.x < 626 and 214 < pl.y <= 274 and not self.dialog and not self.frozen:
+            self._veil_t = getattr(self, "_veil_t", 0.0) - 1 / 60
+            if self._veil_t <= 0:
+                self._veil_t = 8.0
+                self.say("These walls are solid on this frequency. Tune to 121.3 MHz  [" + self.game.keymap.name("tune") + "] to walk out.", 4)
         if "passage_open" in self.flags or self.eff == 1 or self.dialog or self.frozen:
             return
         self._bump_t = getattr(self, "_bump_t", 0.0) - 1 / 60
@@ -466,6 +484,8 @@ class GameplayScene(Scene):
             d = math.hypot(c.x() - px, c.y() - py)
             if pr.action in ("source", "echo_pickup"):
                 d -= 1000                    # story-critical pickups win over neighbouring furniture
+            elif pr.custom_zone:
+                d -= 45
             if d < bd:
                 best, bd = pr, d
         return best
@@ -552,6 +572,13 @@ class GameplayScene(Scene):
             self.audio.play("pickup")
             self.learn(("fuse", "The spare fuse", "Found a spare fuse in the Unknown. It belongs in the Main Transmitter, which only shows its fuse slot on 104.7."))
             lines.append("It must belong in the transmitter, but the transmitter is on the other side of the rubble.")
+        elif act == "safe":
+            if "safe_open" in self.flags:
+                lines = ["The safe is empty now. Nora's letter and cassette are in your journal and your Echo's memory."]
+            elif self.journal.has("sf_rule"):
+                from .puzzles import PasswordScene, SAFE_CFG
+                self.game.push(PasswordScene(self.game, self, SAFE_CFG))
+                return
         elif act == "locker":
             if "locker_open" in self.flags:
                 lines = ["The locker is empty now. Elias's letter and the maintenance tape are in your journal and your Echo's memory."]
@@ -671,6 +698,11 @@ class GameplayScene(Scene):
         self._sig_t += dt
         if self._sig_t > .5:       # autosave whenever progress changed
             self._sig_t = 0.0
+            from ..achievements import check as check_achievements
+            for _aid, title in check_achievements(self):
+                self.say("Achievement unlocked: " + title, 4)
+                self.audio.play("ok")
+                self.game.save.save()
             if self._progress_sig() != self._sig:
                 self.save_progress()
 
@@ -734,8 +766,14 @@ class GameplayScene(Scene):
             self.step_t -= dt
             if self.step_t <= 0:
                 self.step_t = .16
+                self.audio.play(("step_p", "step_pa", "step_u")[self.freq], .35)
                 self.fx.emit(self.player.x + r.uniform(-3, 3), self.player.y - 1, r.uniform(-8, 8), r.uniform(-8, -2),
                              .45, QColor(140, 150, 170, 90), 1, 0, False, 2)
+        self.amb_sound_t -= dt                           # a rare ambient sound per world: creak / drip / whisper
+        if self.amb_sound_t <= 0:
+            self.amb_sound_t = r.uniform(9, 20)
+            if not self.frozen:
+                self.audio.play(("creak", "drip", "whisper")[self.freq], .3)
         # the Unknown leaks floating motes everywhere
         if self.freq == 2 and r.random() < dt * 10:
             self.fx.emit(self.cam[0] + r.uniform(0, W), self.cam[1] + H, r.uniform(-6, 6), r.uniform(-30, -12),
@@ -751,6 +789,11 @@ class GameplayScene(Scene):
         t, L, pl = self.t, [], self.player
         fixed = "fixed" in self.flags
         L.append((pl.x, pl.y - 10, 74, .9, None))
+        if self.torch and not self.lights_on:            # flashlight: a cone of overlapping pools in the facing direction
+            dx, dy = {"right": (1, 0), "left": (-1, 0), "up": (0, -1), "down": (0, 1)}.get(pl.facing, (1, 0))
+            flick = .92 + .08 * math.sin(t * 17)
+            for i, (dist, rad) in enumerate(((24, 34), (46, 44), (72, 54), (100, 64))):
+                L.append((pl.x + dx * dist, pl.y - 10 + dy * dist * .8, rad, (.62 - .09 * i) * flick, (255, 244, 214)))
         for pr in self.world.props:
             if not pr.visible(f, self.flags):
                 continue
@@ -840,6 +883,30 @@ class GameplayScene(Scene):
         p.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
         p.drawImage(0, 0, self.vignette)
         p.fillRect(0, 0, W, H, QColor(tc[0], tc[1], tc[2], 12 if f == 0 else 26))   # colour grade
+        self._band_look(p, f)
+
+    def _band_look(self, p, f):
+        """Each frequency has its own look: the Past is old film (grain, scratches, flicker), the Unknown glitches."""
+        rr = random.random
+        if f == 1:
+            for _ in range(70):
+                g = int(150 + 100 * rr())
+                p.fillRect(int(rr() * W), int(rr() * H), 1, 1, QColor(g, g, g, int(30 + 50 * rr())))
+            if rr() < .18:
+                x = int(rr() * W)
+                p.fillRect(x, 0, 1, H, QColor(220, 240, 255, int(40 + 60 * rr())))
+            p.fillRect(0, 0, W, H, QColor(255, 255, 255, int(5 * rr() + 3 * (1 if math.sin(self.t * 24) > .9 else 0))))
+        elif f == 2:
+            self._glitch_t -= 1 / 60
+            if self._glitch_t < 0:
+                self._glitch_t = random.uniform(2.5, 5.5)
+                self._glitch_frames = 7
+            if getattr(self, "_glitch_frames", 0) > 0:
+                self._glitch_frames -= 1
+                for _ in range(3):
+                    y, h = int(rr() * H), 1 + int(rr() * 5)
+                    p.fillRect(0, y, W, h, QColor(200, 110, 255, int(40 + 60 * rr())))
+                    p.fillRect(int(rr() * W), y, int(30 + 90 * rr()), h, QColor(80, 230, 255, int(50 + 70 * rr())))
 
     # ------------------------------------------------------------------ draw
     def _draw_outlines(self, p, f):
@@ -974,7 +1041,7 @@ class GameplayScene(Scene):
 
     # ------------------------------------------------------------------ HUD
     def _draw_hud(self, p, cx, cy):
-        if self.frozen:       # a puzzle screen is open and draws its own interface
+        if self.frozen or self.game.hide_hud:       # a puzzle screen draws its own interface; F10 hides the HUD for screenshots
             return
         t = self.t
         self._draw_guide(p, cx, cy)
@@ -1016,6 +1083,7 @@ class GameplayScene(Scene):
             f = self.flags
             parts = [s for s, flag in (("WASD move", "tut_move"), ("E interact", "tut_interact"), ("SPACE radio", "radio_used"),
                                        ("Q tune", "tuned"), ("R echo", "echo_opened"), ("J journal", "journal_opened"),
+                                       ("K hint", "tut_interact"),
                                        ("ESC pause", "pause_opened")) if flag in f]
             if parts:
                 ui.text(p, "   ".join(parts), W / 2, H - 6, DIM, 7, False, True)
@@ -1178,6 +1246,20 @@ class GameplayScene(Scene):
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(QColor(255, 210, 90, 200))
             p.drawPolygon(QPolygonF([QPointF(mx + math.cos(ang + a) * r, my + math.sin(ang + a) * r) for a, r in ((0, 10), (2.5, 7), (-2.5, 7))]))
+
+    def ask_hint(self):
+        """K: a hint for the current objective. Each press in a row gives a more specific one (nudge, where, exactly)."""
+        from ..chapters import hint_for
+        m = self.story.mission()
+        if not m:
+            return
+        if m.id != self._hint_mission:
+            self._hint_mission, self._hint_level = m.id, 0
+        else:
+            self._hint_level = min(2, self._hint_level + 1)
+        self.audio.play("note")
+        tail = "" if self._hint_level == 2 else "   (press K again for more)"
+        self.open_dialog(f"HINT {self._hint_level + 1}/3", [hint_for(m.id, self._hint_level) + tail], "terminal")
 
     def toggle_guide(self):
         s = self.game.save.settings

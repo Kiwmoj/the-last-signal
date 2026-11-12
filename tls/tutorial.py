@@ -60,6 +60,8 @@ class Tutorial:
             return
         step = next(s for s in STEPS if s[0] == self.cur)
         _, keys, text, _, _ = step
+        names = {"E": "interact", "SPACE": "radio", "Q": "tune", "R": "echo", "J": "journal"}
+        keys = [gp.game.keymap.name(names[k]) if k in names else k for k in keys]      # show the player's own bindings
         a = self.a
         slide = (1 - a) * -14
         p.save()

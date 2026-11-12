@@ -10,7 +10,7 @@ from .. import ui
 
 
 class MenuScene(Scene):
-    ITEMS = ["Play", "How to Play", "Your Mission", "Settings", "Credits", "Quit"]
+    ITEMS = ["Play", "How to Play", "Your Mission", "Achievements", "Settings", "Credits", "Quit"]
 
     def __init__(self, game):
         super().__init__(game)
@@ -24,9 +24,8 @@ class MenuScene(Scene):
         self.game.audio.set_hum(0)
 
     def items(self):
-        prog = self.game.save.data.get("progress")
-        has_save = bool(prog) and prog.get("v") == 2        # older, pre-story saves cannot be resumed
-        first = ["Continue", "New Game"] if has_save else ["Play"]
+        has_save = self.game.save.has_any_save()            # older, pre-story saves cannot be resumed
+        first = ["Continue", "New Game", "Load Game"] if has_save else ["Play"]
         return first + self.ITEMS[1:]
 
     def key_press(self, k):
@@ -42,16 +41,27 @@ class MenuScene(Scene):
 
     def choose(self):
         name = self.items()[self.sel % len(self.items())]
-        if name in ("Play", "Continue", "New Game"):
+        if name in ("Play", "Continue"):
             from .gameplay import GameplayScene
             if name == "Continue":
+                prog = self.game.save.data.get("progress")
+                if not (prog and prog.get("v") == 2):          # active slot is empty: open the slot list instead
+                    from .slots import SlotScene
+                    self.game.push(SlotScene(self.game, "load"))
+                    return
                 self.game.push(GameplayScene(self.game, load=True))
             else:
-                if name == "New Game":
-                    self.game.save.data["progress"] = None
-                    self.game.save.save()
+                self.game.save.select_slot(0)
+                self.game.save.clear_slot(0)
+                self.game.save.save()
                 from .intro import IntroScene
                 self.game.push(IntroScene(self.game))
+        elif name in ("New Game", "Load Game"):
+            from .slots import SlotScene
+            self.game.push(SlotScene(self.game, "new" if name == "New Game" else "load"))
+        elif name == "Achievements":
+            from .achievements import AchievementsScene
+            self.game.push(AchievementsScene(self.game))
         elif name == "How to Play":
             from .howto import HowToScene
             self.game.push(HowToScene(self.game))
@@ -72,14 +82,15 @@ class MenuScene(Scene):
         ui.text(p, "THE LAST SIGNAL", W / 2, 70, CYAN, 26, True, True, True)
         ui.text(p, "- a radio mystery -", W / 2, 88, DIM, 8, False, True)
         for i, name in enumerate(self.items()):
-            y = 120 + i * 17
+            y = 106 + i * 15
             on = i == self.sel % len(self.items())
             col = AMBER if on else TEXT
             label = f"> {name} <" if on else name
-            ui.text(p, label, W / 2, y, col, 11, on, True, on)
+            ui.text(p, label, W / 2, y, col, 10, on, True, on)
         prog = self.game.save.data.get("progress")
         if prog and prog.get("v") == 2 and self.items()[self.sel % len(self.items())] == "Continue":
-            ui.text(p, "Chapter " + str(prog.get("chapter", 1)) + ":  " + prog.get("objective", "..."), W / 2, 232, DIM, 7, False, True)
+            ui.text(p, f"Slot {self.game.save.data['slot'] + 1}  -  Chapter " + str(prog.get("chapter", 1)) + ":  " + prog.get("objective", "..."),
+                    W / 2, 248, DIM, 7, False, True)
         seen = self.game.save.data.get("endings", [])
         if seen:
             ui.text(p, f"Endings found: {len(set(seen))}/2", W - 8 - 80, 14, DIM, 7)

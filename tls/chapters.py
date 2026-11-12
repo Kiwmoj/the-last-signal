@@ -89,6 +89,38 @@ CHAPTERS = [
 ]
 BY_N = {c.n: c for c in CHAPTERS}
 
+# Three escalating hints per mission (press K): a nudge, then where to look, then exactly what to do.
+HINTS = {
+    "c1m1": ["Get your bearings first.", "Walk around the control room with WASD.", "Hold D or the right arrow to walk into the room."],
+    "c1m2": ["Go deeper into the room.", "Head east, past the middle of the control room.", "Walk to the red rug in the middle of the room."],
+    "c1m3": ["Something on the left side table is humming.", "The table is at the far left of the room.", "Stand next to the small table on the left and press E."],
+    "c1m4": ["The Echo Receiver finds hidden things.", "Radio on (SPACE), tune to 104.7 (Q), open the Echo (R) and choose TRACK.", "Follow the gold arrow to the signal and press E to lock on."],
+    "c1m5": ["You have a recording. Replay it.", "Open the Echo with R and go to MEMORY (press 3).", "Press ENTER in MEMORY to play the recording."],
+    "c2m1": ["Three things in this room hold answers.", "The terminal, the filing cabinet and the supply crate.", "Press E at each. The terminal's files change with the frequency, so read it on every band."],
+    "c2m2": ["The Past remembers a spare fuse. The Unknown shows it.", "The fuse is in the Offices. The first time, the doorway only opens on 104.7.", "Take the fuse on 121.3 in the Offices, then use it at the Main Transmitter on 104.7."],
+    "c2m3": ["Elias left a recording the Echo can find.", "It is in the control room, on the Unknown band (121.3).", "Echo TRACK on 121.3 in the control room, then lock on with E."],
+    "c2m4": ["The research wing door wants three tones.", "Elias's recording named the order: memory, the dark, the present.", "Press E at the door on 104.7, then 121.3, then 88.1."],
+    "c3m1": ["The wing is open now.", "Walk east through the research wing door.", "The door is on the right side of the offices."],
+    "c3m2": ["The Experiment Array answers to all three bands.", "Examine it on 88.1, 104.7 and 121.3.", "Press E at the array on each frequency, using Q in between."],
+    "c3m3": ["The old radio is wired to this wing.", "Use it and rebuild the message from the fragments. Each band holds one.", "The recording order is not the reading order: try the second fragment first, then the first, then the third."],
+    "c3m4": ["The archive door wants a name and a year.", "The name is in the decrypted log (88.1), the year in the notebook (104.7).", "Type NORA1971 at the Archive Door."],
+    "c3m5": ["The archive receiver wants pulses in a certain order.", "The notebook says the heaviest pulse count goes first.", "Order the pulse patterns from most pulses to fewest."],
+    "c3m6": ["A live voice is somewhere in the archive.", "Use the Echo on the Unknown band, inside the archive.", "Echo TRACK on 121.3 in the archive and press E at the signal."],
+    "c4m1": ["Follow the echoes. Begin where Elias last sat.", "The control room, on the Past band (104.7).", "Echo TRACK on 104.7 in the control room and lock on."],
+    "c4m2": ["The trail continues through the offices.", "The Unknown band (121.3), in the offices and storage.", "Echo TRACK on 121.3 in the offices and lock on."],
+    "c4m3": ["The trail reaches the research wing.", "The Present band (88.1), in the experiment bays.", "Echo TRACK on 88.1 in the research wing and lock on."],
+    "c4m4": ["The trail ends in the archive.", "Look for a recording rack numbered 09-A.", "Press E at the rack in the archive."],
+    "c5m1": ["The chamber door wants a date as six digits.", "Day, month and year are written on three calendars, one per frequency.", "Day on 88.1, month on 104.7, year on 121.3. Type them as DDMMYY."],
+    "c5m2": ["The chamber terminal holds the purpose of Station 09.", "Its files are different on each frequency.", "Press E at the research terminal and read every file."],
+    "c5m3": ["Elias's notes give the order.", "Unknown first, then the present, then the past.", "At the final transmitter send 121.3, then 88.1, then 104.7."],
+    "c5m4": ["You have everything you need.", "Send the warning, or shut the signal down.", "Choose with A and D, then press ENTER."],
+}
+
+
+def hint_for(mission_id, level):
+    h = HINTS.get(mission_id)
+    return h[min(level, len(h) - 1)] if h else ""
+
 
 # ---------------------------------------------------------------- events
 # "lines": dialogue pages, "fx": a world effect run when the event starts

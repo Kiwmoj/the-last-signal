@@ -12,6 +12,8 @@ from PyQt6.QtWidgets import QWidget
 
 from .constants import W, H, FPS, BG
 from .save import SaveData
+from .keymap import Keymap
+from .gamepad import Gamepad
 from .audio import Audio
 
 
@@ -35,9 +37,13 @@ class GameWindow(QWidget):
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setMouseTracking(True)
         self.save = SaveData()
+        self.keymap = Keymap(self.save.settings)
+        self.pad = Gamepad(self)
         self.audio = Audio(self.save.settings)
         self.buffer = QImage(W, H, QImage.Format.Format_ARGB32_Premultiplied)
         self.keys = set()
+        self.hide_hud = False
+        self.last_screenshot = None
         self.time = 0.0
         self.scenes = []
 
@@ -73,6 +79,8 @@ class GameWindow(QWidget):
         self.time += dt
         top = self.scenes[-1]
         try:
+            self.pad.poll(dt)
+            top = self.scenes[-1]
             top.update(dt)
         except Exception:
             self._recover(top)
@@ -137,6 +145,18 @@ class GameWindow(QWidget):
         if e.button() == Qt.MouseButton.LeftButton and hasattr(s, "mouse_press"):
             s.mouse_press(*self._to_game(e.position()))
 
+    def screenshot(self):
+        """F12: save the current frame (480x270, scaled up 3x) to a screenshots folder next to the game."""
+        folder = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "screenshots")
+        try:
+            os.makedirs(folder, exist_ok=True)
+            path = os.path.join(folder, time.strftime("the_last_signal_%Y%m%d_%H%M%S.png"))
+            self.buffer.scaled(W * 3, H * 3, Qt.AspectRatioMode.KeepAspectRatio).save(path)
+            self.last_screenshot = path
+            self.audio.play("click")
+        except Exception:
+            pass
+
     # ---- input ----
     def keyPressEvent(self, e):
         if e.isAutoRepeat():
@@ -145,14 +165,27 @@ class GameWindow(QWidget):
         if k == Qt.Key.Key_F11:
             self.set_fullscreen(not self.isFullScreen())
             return
+        if k == Qt.Key.Key_F10:                  # screenshot mode: hide the HUD for clean frames
+            self.hide_hud = not self.hide_hud
+            return
+        if k == Qt.Key.Key_F12:
+            self.screenshot()
+            return
+        self.key_down(k)
+
+    def key_down(self, k):
+        """A key (or gamepad button) went down."""
         self.keys.add(k)
         self.scenes[-1].key_press(k)
+
+    def key_up(self, k):
+        self.keys.discard(k)
+        self.scenes[-1].key_release(k)
 
     def keyReleaseEvent(self, e):
         if e.isAutoRepeat():
             return
-        self.keys.discard(e.key())
-        self.scenes[-1].key_release(e.key())
+        self.key_up(e.key())
 
     def closeEvent(self, e):
         # Closing the window must never lose progress: save any running game first.

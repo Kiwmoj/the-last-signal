@@ -27,6 +27,7 @@ class SettingsScene(Scene):
             f"Guide arrows {'ON' if s.get('guide_arrows', True) else 'OFF'}",
             f"Scanlines   {'ON' if s['scanlines'] else 'OFF'}",
             f"Fullscreen  {'ON' if s['fullscreen'] else 'OFF'}",
+            "Controls...",
             "Back",
         ]
 
@@ -51,6 +52,10 @@ class SettingsScene(Scene):
                 s["scanlines"] = not s["scanlines"]
             elif self.sel == 4:
                 self.game.set_fullscreen(not s["fullscreen"])
+            elif self.sel == 5:
+                if k not in arrows:
+                    from .controls import ControlsScene
+                    self.game.push(ControlsScene(self.game))
             elif k not in arrows:
                 self.close()
         elif k == K.Key_Escape:
@@ -62,10 +67,10 @@ class SettingsScene(Scene):
 
     def draw(self, p):
         draw_backdrop(p, self.t)
-        ui.panel(p, 110, 44, 260, 180, CYAN)
-        ui.text(p, "SETTINGS", W / 2, 66, CYAN, 12, True, True, True)
+        ui.panel(p, 110, 38, 260, 196, CYAN)
+        ui.text(p, "SETTINGS", W / 2, 60, CYAN, 12, True, True, True)
         for i, r in enumerate(self.rows()):
             on = i == self.sel
-            ui.text(p, ("> " if on else "  ") + r, 128, 92 + i * 19,
+            ui.text(p, ("> " if on else "  ") + r, 128, 84 + i * 18,
                     AMBER if on else TEXT, 9, on)
-        ui.text(p, "A/D adjust   ESC back", W / 2, 214, DIM, 7, False, True)
+        ui.text(p, "A/D adjust   ESC back", W / 2, 224, DIM, 7, False, True)

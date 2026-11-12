@@ -63,11 +63,12 @@ class Overlay(Scene):
         self.game.pop()
 
     def tune_key(self, k):
-        """Q cycles frequency and SPACE toggles the radio, exactly like in the world."""
-        if k == Qt.Key.Key_Q:
+        """The tune key cycles frequency and the radio key toggles the radio, exactly like in the world."""
+        act = self.game.keymap.action(k)
+        if act == "tune":
             self.gp.cycle_radio()
             return True
-        if k == Qt.Key.Key_Space:
+        if act == "radio":
             self.gp.toggle_radio()
             return True
         return False

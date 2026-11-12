@@ -18,6 +18,7 @@ Terminal file lock flags: "flag" = locked until flag set, "+flag" = file only ap
 PASSWORD = "NORA1971"        # archive door: NAME (decrypted log, 88.1) + YEAR (notebook, 104.7), format hint on 121.3
 CHAMBER_CODE = "140880"      # chamber door: DAY (88.1) + MONTH (104.7) + YEAR (121.3) plaques
 LOCKER_CODE = "6402"         # optional Staff Locker 2-A: digits on the duty board (104.7), whiteboard (88.1 / 121.3), wing slate (88.1)
+SAFE_CODE = "917"            # optional Wing Safe: count what Nora drew. Control Room (104.7) 9 rays, Offices (88.1) 1 tree, Archive (121.3) 7 stars
 FRAG_ORDER = [1, 0, 2]       # Old Radio: past fragment, present fragment, unknown fragment
 RECEIVER_PULSES = {0: 3, 1: 1, 2: 2}
 RECEIVER_ORDER = [0, 2, 1]   # heaviest pulse count first: 88.1 (3), 121.3 (2), 104.7 (1)
@@ -60,6 +61,10 @@ PUZZLES = [
      "Marlowe's staff locker in the Offices takes a four-digit code. Its digits were left in different rooms: the Control Room duty board, "
      "the Offices whiteboard and the Research Wing slate. Each is only readable on one frequency.",
      "Inside: Elias's unsent letter to his daughter, and a maintenance tape from the night it began."),
+    ("safe_open", "The Wing Safe",
+     "A small safe in the research wing is marked with a child's handwriting: count what Nora drew. Her three drawings hang in three different rooms, "
+     "and each shows its picture clearly on only one frequency.",
+     "Inside: a letter from Nora, written the week it began, and her cassette."),
     ("chamber_open", "The Chamber Lock",
      "The chamber opens to the date everything began. The station wrote it in three places, one per layer: the day, the month and the year.",
      "The Transmission Chamber is open."),

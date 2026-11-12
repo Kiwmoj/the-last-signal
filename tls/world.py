@@ -66,6 +66,7 @@ class Prop:
         self.hide_if, self.open_if = hide_if, open_if
         self.needs = (need,) if isinstance(need, str) else tuple(need or ())
         self.zone = QRectF(*zone) if zone else self.rect.adjusted(-12, -8, 12, 18)
+        self.custom_zone = zone is not None      # a hand-placed "stand here" zone beats neighbouring furniture when focusing
 
     def visible(self, f, flags):
         return f in self.vis and self.hide_if not in flags and all(n in flags for n in self.needs)
@@ -232,6 +233,22 @@ class World:
                    2: {"style": "voice", "lines": ["Violet dust drifts across the slate. The writing is unreadable here. The Present shows it clearly."], "clue": None}}),
             P("locker", 504, 226, 26, 40, name="Staff Locker 2-A", verb="Open", action="locker", lines=[
                 "A grey steel locker stencilled 2-A. A four-digit dial lock hangs from the latch."]),
+            P("safe", 714, 160, 22, 28, name="Wing Safe", verb="Open", action="safe", lines=[
+                "A small wall safe on a trolley, three dials. A child's handwriting is scratched into the door: 'Count what Nora drew.'"],
+              clue=("sf_rule", "Wing Safe: count what Nora drew", "The Wing Safe takes three digits. Nora drew in three rooms: the Control Room, the Offices and the Archive. Count what is in each drawing. Each shows clearly on only one frequency.", "key")),
+            P("board", 84, 214, 24, 30, name="Child's Drawing", verb="Look at", style="note",
+              lines=["A sheet of grey paper pinned above the transmitter. On this side of time it is smudged beyond reading."],
+              alt={1: {"style": "voice", "lines": ["A child's crayon drawing: a smiling sun with NINE rays. 'for daddy - nora'."],
+                       "clue": ("sf_1", "Safe digit 1: 9", "Control Room drawing, 104.7 MHz: a sun with nine rays, signed 'for daddy - nora'.", "key")}}),
+            P("drawing", 548, 24, 16, 20, solid=False, name="Child's Drawing", verb="Look at", zone=(534, 62, 44, 50), style="note",
+              lines=["A child's crayon drawing: a single big tree with a yellow door in its trunk. 'our tree'."],
+              clue=("sf_2", "Safe digit 2: 1", "Offices drawing, 88.1 MHz: one big tree. 'our tree'.", "key"),
+              alt={1: {"lines": ["On this side of time the paper is blank."], "clue": None},
+                   2: {"style": "voice", "lines": ["The paper is a square of violet light. The picture is unreadable here. The Present shows it clearly."], "clue": None}}),
+            P("drawing", 846, 14, 16, 20, solid=False, name="Child's Drawing", verb="Look at", zone=(850, 66, 36, 40), style="note",
+              lines=["A sheet of grey paper pinned to the shelves. It is smudged beyond reading on this side of time."],
+              alt={2: {"style": "voice", "lines": ["A child's crayon drawing of the night sky: SEVEN stars and a tiny radio tower. 'listen'."],
+                       "clue": ("sf_3", "Safe digit 3: 7", "Archive drawing, 121.3 MHz: seven stars over a little radio tower. 'listen'.", "key")}}),
             P("sidetable", 66, 140, 46, 22, name=None),
             P("echorecv", 82, 134, 14, 30, solid=False, name="Echo Receiver", verb="Pick up", action="echo_pickup",
               hide_if="echo_found", zone=(60, 120, 60, 60), lines=list(ECHO_PICKUP)),
@@ -272,7 +289,7 @@ class World:
                 "Elias's own terminal. Its screen glows with his final files."]),
             P("finaltx", 976, 84, 72, 62, name="Final Transmitter", verb="Operate", action="finaltx", style="radio", lines=[
                 "THE FINAL TRANSMITTER. A tower of coils and dials, humming at a pitch that matches your pulse."]),
-            P("lectern", 1020, 152, 28, 24, name="Elias's Final Notes", verb="Read", style="note",
+            P("lectern", 934, 150, 28, 24, name="Elias's Final Notes", verb="Read", style="note",
               lines=["Elias's last notes. 'To send the message, the transmitter must hear each layer in turn.'"],
               alt={2: {"style": "voice", "lines": ["'Begin with the unknown. It must hear you first.'"],
                        "clue": ("final_1", "Final transmission: first", "Elias's notes (121.3): begin the final transmission with the unknown. It must hear you first.", "key")},
@@ -305,7 +322,8 @@ class World:
             (2, 826, 116, "p3_done"),
             (0, 371, 42, "chamber_open", "ch4_done"), (1, 517, 40, "chamber_open", "ch4_done"), (2, 679, 179, "chamber_open", "ch4_done"),
             (1, 277, 215, "clue_lk_1"), (0, 441, 135, "clue_lk_2"), (2, 441, 135, "clue_lk_3"), (0, 660, 176, "clue_lk_4"),
-            (0, 1012, 115, "final_ready", "chamber_open"), (1, 1012, 115, "final_ready", "chamber_open"), (2, 1012, 115, "final_ready", "chamber_open"),
+            (1, 96, 229, "clue_sf_1"), (0, 556, 34, "clue_sf_2"), (2, 854, 24, "clue_sf_3"),
+            (0, 948, 162, "final_ready", "chamber_open"), (1, 948, 162, "final_ready", "chamber_open"), (2, 948, 162, "final_ready", "chamber_open"),
         ]
         self.bg = build_background(self.windows)
         self.overlays = {1: build_overlay(1), 2: build_overlay(2)}
@@ -935,9 +953,31 @@ def _board(p, pr, t, st):
     box(p, x + w - 11, y + h - 22, 1, 6, (170, 60, 60)); box(p, x + w - 6, y + h - 22, 1, 6, (170, 60, 60))
 
 
+def _drawing(p, pr, t, st):
+    """A child's crayon drawing pinned to the wall: paper, a few crayon strokes (colours differ per position)."""
+    x, y = pr.rect.x(), pr.rect.y()
+    box(p, x, y, 16, 20, (196, 190, 170)); box(p, x, y, 16, 1, (230, 224, 200)); box(p, x + 7, y - 1, 2, 2, (170, 50, 50))
+    r = random.Random(int(x))
+    for _ in range(4):
+        box(p, x + r.randint(2, 11), y + r.randint(4, 15), r.randint(2, 4), 1, r.choice(((220, 150, 40), (60, 140, 200), (200, 70, 70), (80, 170, 90))))
+
+
+def _safe(p, pr, t, st):
+    x, y, w, h = pr.rect.x(), pr.rect.y(), pr.rect.width(), pr.rect.height()
+    opened = "safe_open" in st.flags
+    box(p, x, y + h - 6, w, 6, (40, 44, 54))                                 # trolley
+    box(p, x, y, w, h - 6, (58, 64, 78)); box(p, x, y, w, 1, (110, 122, 142)); box(p, x, y, 1, h - 6, (92, 102, 122))
+    if opened:
+        box(p, x + 3, y + 3, w - 6, h - 12, (12, 14, 20)); box(p, x + 5, y + 8, 8, 8, (200, 192, 160))
+    else:
+        for i in range(3):
+            box(p, x + 4 + i * 6, y + 6, 4, 4, (150, 160, 176))
+        box(p, x + w - 6, y + 14, 3, 5, (190, 160, 70))
+
+
 def _locker(p, pr, t, st):
     x, y, w, h = pr.rect.x(), pr.rect.y(), pr.rect.width(), pr.rect.height()
-    opened = "locker_open" in st.flags
+    opened = (pr.sid or "locker") + "_open" in st.flags
     box(p, x, y, w, h, (62, 72, 88)); box(p, x, y, w, 1, (112, 126, 148)); box(p, x, y, 1, h, (96, 108, 128))
     if opened:
         box(p, x + 3, y + 3, w - 6, h - 6, (14, 16, 22)); box(p, x + 3, y + 3, 3, h - 6, (84, 96, 118))
@@ -1220,7 +1260,7 @@ def _rack09(p, pr, t, st):
 _DRAW = {"console": _console, "computer": _computer, "rack": _rack, "table": _table,
          "chair": _chair, "cabinet": _cabinet, "shelf": _shelf, "crate": _crate,
          "plant": _plant, "artifact": _artifact, "door": _door, "switch": _switch,
-         "rubble": _rubble, "board": _board, "locker": _locker, "arch": _arch, "echo": _echo, "veil": _veil, "fuse": _fuse,
+         "rubble": _rubble, "board": _board, "locker": _locker, "drawing": _drawing, "safe": _safe, "arch": _arch, "echo": _echo, "veil": _veil, "fuse": _fuse,
          "glyphs": _glyphs, "sigil": _sigil, "plaque": _plaque, "beacon": _beacon, "mural": _mural,
          "oldradio": _oldradio, "notebook": _notebook, "secdoor": _secdoor, "archive": _archive,
          "receiver": _receiver, "sidetable": _sidetable, "echorecv": _echorecv, "source": _source,
