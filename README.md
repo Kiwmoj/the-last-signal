@@ -46,6 +46,14 @@ Gamepad (Xbox-compatible, Windows): stick or D-pad moves, A interact, B or Start
 
 The soundtrack is generated the first time you play (about 20 seconds, in the background). To use your own music, put WAV files named `menu`, `control`, `explore`, `unknown`, `revelation` or `chapter` in a `music/` folder, for example `music/menu.wav`.
 
+## Play in a web browser
+
+```
+python web.py
+```
+
+Then open http://localhost:8080. The game keeps running in Python/PyQt on your computer and is streamed to the browser, which sends your keys and clicks back. Use `--host 0.0.0.0 --port 9000` to let other devices on your network connect. Limits: one shared game session for everyone connected, and no sound in the browser. To put it online for the public you need a host that can run Python 24/7 (a small VPS); static hosts like GitHub Pages cannot run it.
+
 ## Build the .exe
 
 ```
