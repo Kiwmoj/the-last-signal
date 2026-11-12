@@ -45,8 +45,28 @@ def _pluck(d, f, amp, decay):
     return amp * math.exp(-d * decay) * (sin(TAU * f * d) + .3 * sin(TAU * f * 2.01 * d))
 
 
+def _events(seed, scale, n, density):
+    """A looping melody: n steps, each either a note from `scale` (MIDI numbers) or a rest. Seeded, so it is always the same tune."""
+    rnd = random.Random(seed)
+    return [hz(rnd.choice(scale)) if rnd.random() < density else None for _ in range(n)]
+
+
+def _mel(t, ev, length, amp, decay=1.6):
+    """Sum of the melody notes still ringing at time t (each note echoes twice). Wraps at `length`, so loops stay seamless."""
+    step = length / len(ev)
+    i = int(t / step)
+    out = 0.0
+    for k in (i, i - 1, i - 2):
+        f = ev[k % len(ev)]
+        if f:
+            d = t - k * step
+            out += _pluck(d, f, amp, decay) + _pluck(d - .45, f, amp * .45, decay) + _pluck(d - .9, f, amp * .2, decay)
+    return out
+
+
 def menu():
-    L, xf = 24.0, 1.5
+    L, xf = 40.0, 1.5
+    mel = _events(101, [69, 72, 74, 76, 79, 81], 20, .55)           # slow A-minor-pentatonic tune
     n = int((L + xf) * RATE)
     f = [snap(x, L) for x in (55, 110, 164.81, 261.63, 329.63)]
     bells = [(3.0, hz(76)), (8.5, hz(69)), (13.0, hz(72)), (17.5, hz(71)), (21.0, hz(64))]
@@ -62,9 +82,10 @@ def menu():
              + .11 * sin(TAU * f[2] * t) * s2 + .08 * sin(TAU * f[3] * t) * (1 - s2) + .05 * sin(TAU * f[4] * t) * s1)
         for bt, bf in bells:
             v += _pluck(t - bt, bf, .11, 1.5) + _pluck(t - bt - .75, bf, .05, 1.8)
+        v += _mel(t, mel, L, .07, 1.2)
         nz += (rnd.uniform(-1, 1) - nz) * .22                   # distant radio static
         v += nz * .03 * (.3 + .7 * s2)
-        for pt in (6.0, 18.0):                                  # occasional electronic pulse
+        for pt in (6.0, 18.0, 30.0):                            # occasional electronic pulse
             d = t - pt
             if 0 <= d < 1.5:
                 v += .10 * sin(TAU * 45 * d) * math.exp(-d * 3)
@@ -73,10 +94,11 @@ def menu():
 
 
 def control():
-    L, xf = 20.0, 1.0
+    L, xf = 32.0, 1.0
+    mel = _events(202, [62, 65, 69, 72, 74], 8, .4)                  # sparse, distant notes
     n = int((L + xf) * RATE)
     rnd = random.Random(23)
-    events = [(rnd.uniform(0, L), rnd.uniform(.08, .35), rnd.uniform(900, 2600)) for _ in range(8)]
+    events = [(rnd.uniform(0, L), rnd.uniform(.08, .35), rnd.uniform(900, 2600)) for _ in range(13)]
     pad = [snap(x, L) for x in (146.83, 174.61, 220.0)]
     base = snap(55, L)
     crk = 0.0
@@ -93,13 +115,13 @@ def control():
                 v += .06 * rnd.uniform(-1, 1) * sin(math.pi * d / du) * (.5 + .5 * sin(TAU * fr * t))
         if rnd.random() < .0004:
             crk = rnd.uniform(-.25, .25)
-        v += crk
+        v += crk + _mel(t, mel, L, .035, 1.0)
         crk *= .88
         for bt in (4.0, 13.5):
             d = t - bt
             if 0 <= d < .05 or 0 <= d - .12 < .05:
                 v += .05 * sin(TAU * 1320 * t)
-        for k in range(4):
+        for k in range(6):
             d = t - 5.0 * k
             if 0 <= d < 1.2:
                 v += .08 * sin(TAU * 60 * d) * math.exp(-d * 4)
@@ -108,11 +130,12 @@ def control():
 
 
 def explore():
-    L, xf = 28.0, 1.5
+    L, xf = 56.0, 1.5
+    mel = _events(303, [69, 72, 74, 76, 77, 81, 84], 28, .6)
     n = int((L + xf) * RATE)
     chords = [(45, [57, 60, 64]), (41, [53, 57, 60, 64]), (38, [50, 53, 57, 62]), (40, [52, 56, 59, 64])]
     pattern = [0, 2, 1, 3, 2, 1, 0, 2]
-    hop = 7.0
+    hop = L / 4
     buf = []
     for i in range(n):
         t = i / RATE
@@ -133,6 +156,7 @@ def explore():
             tones = chords[ci][1]
             note = tones[pattern[st % 8] % len(tones)] + 12
             v += _pluck(d, hz(note), .05, 2.2) + _pluck(d - .875, hz(note), .025, 2.4)
+        v += _mel(t, mel, L, .045, 1.5)
         d = t % 3.5
         v += .11 * sin(TAU * 50 * d) * math.exp(-d * 5)
         buf.append(v)
@@ -141,6 +165,7 @@ def explore():
 
 def unknown():
     L, xf = 24.0, 1.5
+    mel = _events(404, [66, 69, 70, 75, 78], 12, .45)                 # odd, unresolved tune
     n = int((L + xf) * RATE)
     rnd = random.Random(7)
     a, b = snap(110, L), snap(116.54, L)             # a minor second: slow, uneasy beating
@@ -160,6 +185,7 @@ def unknown():
         d = t - 18.0
         if d >= 0:
             v += .10 * (d / 6.0) ** 2 * sin(TAU * snap(330, L) * t)
+        v += _mel(t, mel, L, .05, 1.1)
         if c % 6 == 0:                                 # bit-crushed hiss
             hold = rnd.uniform(-1, 1)
         c += 1
@@ -170,6 +196,7 @@ def unknown():
 
 def revelation():
     L, xf = 20.0, 1.0
+    mel = _events(505, [57, 60, 63, 64, 67], 10, .5)
     n = int((L + xf) * RATE)
     notes = [snap(x, L) for x in (110, 164.81, 261.63)]
     bb = snap(233.08, L)
@@ -188,6 +215,7 @@ def revelation():
         v += .22 * sin(TAU * 48 * d) * math.exp(-d * 9) + .15 * sin(TAU * 55 * (d - .32)) * math.exp(-(d - .32) * 10) * (1 if d >= .32 else 0)
         for pt, fr in ((5.0, 1760.0), (13.0, 1480.0)):
             v += _pluck(t - pt, fr, .05, 1.6)
+        v += _mel(t, mel, L, .045, 1.3)
         nz += (rnd.uniform(-1, 1) - nz) * .1
         v += nz * .04 * swell
         buf.append(v)

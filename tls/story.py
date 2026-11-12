@@ -102,6 +102,14 @@ TERMINAL = {
          "INCIDENT REPORT: the date of the incident is stamped in three places, one in each layer of the station. The present holds the day. "
          "The past holds the month. The unknown holds the year. The transmission chamber door answers to that date.",
          ("incident_hint", "Incident report", "The chamber door opens to the incident date: the day (88.1, control room), the month (104.7, offices) and the year (121.3, research wing).", "key")),
+        ("MEMO_0805.TXT", None,
+         "INTERNAL MEMO, AUGUST 5, 1980. 'To all staff: the research wing is restricted from the 8th. Families are asked to stay in the control room. "
+         "The canteen is closed for the week, so bring your own coffee. Yes, again. Dr. Marlowe thanks you for your patience with Project 09.'",
+         ("memo_0805", "Staff memo", "Two weeks before the incident, the research wing was closed to families and Project 09 was already running. The staff were told to be patient.")),
+        ("WREN_DIARY.TXT", "+beacon",
+         "DIARY OF DR. A. WREN, AUGUST 11. 'Elias barely sleeps. He talks to the unknown band like it owes him something. I asked what he hopes to hear and he said, "
+         "a way to take it all back. I did not ask what he meant. Tomorrow I will.'",
+         ("wren_diary", "Wren's diary", "Dr. Wren's last diary entry: Elias barely slept and hoped to hear 'a way to take it all back' from the unknown band. She meant to ask what he meant.")),
     ],
     1: [
         ("MAIL_0114.TXT", None,
@@ -112,6 +120,18 @@ TERMINAL = {
          "STANDING ORDERS: Never answer the unknown band alone. Never open the archive while the unknown band is active. "
          "If you hear a voice you recognise, do not reply.",
          ("orders", "Standing orders", "Researchers were ordered never to answer the unknown band alone and never to open the archive while it was active.")),
+        ("CANTEEN_NOTE.TXT", None,
+         "A scrap of a note taped to the canteen door: 'Whoever keeps humming that tune at three in the morning, please stop. It is lovely. "
+         "It is also the exact tune the child on the radio hums. Nobody has told Elias. - A.'",
+         ("canteen_note", "A note from the canteen", "A note says a tune is hummed every night at three in the morning, and that the child on the radio hums the same tune. Nobody told Elias.")),
+        ("MAIL_0812.TXT", "+beacon",
+         "FROM: Dr. Wren  TO: E. Marlowe. 'I read the loop logs again. The voice on the unknown band uses words we have not said yet. "
+         "If it speaks from tomorrow, then who is tomorrow? Please do not open the archive without me. Please, Elias.'",
+         ("mail_0812", "Wren's last mail", "Dr. Wren wrote to Elias the day before: the unknown voice uses words nobody has said yet. She begged him not to open the archive without her.")),
+        ("SHIFT_ROTA.TXT", "+archive_open",
+         "SHIFT ROTA, AUG 13-14. NIGHT OPERATOR: A. REYES (RELIEF, ARRIVES 02:47). 'Alex, if you are reading this, it was always going to be you. "
+         "I wrote your name here before you were assigned. - E.M.'",
+         ("shift_rota", "The night rota", "Elias wrote the shift rota with your name on it before you were assigned: 'it was always going to be you'.")),
     ],
     2: [
         ("KEY.FMT", None,
@@ -120,6 +140,12 @@ TERMINAL = {
         ("WHISPER.DAT", None,
          "Y O U   A R E   L I S T E N I N G.   I T   I S   L I S T E N I N G   B A C K.",
          ("whisper", "The whisper", "On 121.3 the terminal whispers that whoever listens is listened to in return.")),
+        ("DREAM.DAT", None,
+         "I   D R E A M E D   O F   A   S T A T I O N   T H A T   H E A R D   I T S E L F.   S O M E O N E   S A I D   S O R R Y   O V E R   A N D   O V E R.",
+         ("dream", "The dream", "On 121.3 the terminal shows a dream: a station that heard itself, and a voice that kept saying sorry.")),
+        ("COUNTDOWN.DAT", "+revealed",
+         "T - 00:00:00.   N O T H I N G   E N D S   H E R E.   Y O U   C A N   C H O O S E   W H A T   T H E   S I G N A L   S A Y S.",
+         ("countdown", "The countdown", "At the bottom of the Unknown band a counter has stopped at zero. The file says you can choose what the signal says.")),
     ],
 }
 
@@ -129,6 +155,10 @@ CHAMBER_FILES = {
          "PROJECT 09. PURPOSE: to prove that a message can be carried backward across time, so a warning might reach people before it is too late. "
          "Station 09 was never built to listen. It was built to SPEAK.",
          ("purpose", "The purpose of Station 09", "Station 09 was built to carry one warning backward through time. It was built to speak, not to listen.")),
+        ("ELIAS_LAST.TXT", None,
+         "ELIAS MARLOWE, PRIVATE. 'If Nora ever hears this tape: I did not build a machine to change time. I built it to apologise to someone I had not met. "
+         "Every night the voice says it is sorry. I think I finally know why.'",
+         ("elias_last", "Elias, privately", "Elias wrote that he built the machine to apologise to someone he had not met, and that the voice was always sorry.")),
         ],
     1: [("FIRST_MESSAGE.TXT", None,
          "On the night of the incident the first message arrived on the unknown band: a stranger's voice. 'Do not open the archive. It knows you are listening.' "
@@ -139,6 +169,9 @@ CHAMBER_FILES = {
          "THE VOICE WAS NEVER A STRANGER. IT SPEAKS FROM TONIGHT. IT SENDS FROM THIS CHAMBER, THROUGH THE LAST TRANSMITTER, "
          "IN THE VOICE OF THE ONE WHO FINISHES IT. EVERY LISTENER BECOMES THE SENDER.",
          ("loop", "The loop", "The voice that warned Marlowe speaks from tonight, from this chamber. Whoever finishes the last transmission becomes the sender.")),
+        ("NORA.DAT", None,
+         "NORA, AGE NINE, ON TAPE: 'The radio told me a secret. It said the person who finishes the signal gets to go home. It did not say whose home.'",
+         ("nora_tape", "Nora's recorded secret", "Nora recorded that the radio told her the person who finishes the signal gets to go home, without saying whose home.")),
         ],
 }
 

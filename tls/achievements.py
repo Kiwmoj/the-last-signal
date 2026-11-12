@@ -1,4 +1,5 @@
 """Achievements: checked against the game state a couple of times a second, saved globally (shared by all save slots)."""
+from .story import TERMINAL, CHAMBER_FILES
 
 # (id, title, description, check(gp))
 ACHIEVEMENTS = [
@@ -16,6 +17,8 @@ ACHIEVEMENTS = [
     ("two_roads", "Two Roads", "See both endings.", lambda gp: len(set(gp.game.save.data.get("endings", []))) >= 2),
     ("every_secret", "Every Secret", "Find Elias's letter and Nora's letter.",
      lambda gp: gp.journal.has("elias_letter") and gp.journal.has("nora_letter")),
+    ("reader", "Station Historian", "Read every file on every terminal.",
+     lambda gp: all(("file:" + f[0]) in gp.read for d in (TERMINAL, CHAMBER_FILES) for fl in d.values() for f in fl)),
 ]
 TOTAL = len(ACHIEVEMENTS)
 

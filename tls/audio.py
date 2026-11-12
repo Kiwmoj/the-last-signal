@@ -65,7 +65,7 @@ NAMES = ("blip", "click", "tune", "static", "ok", "bad", "pickup", "door", "note
 MOODS = ("menu", "control", "explore", "unknown", "revelation", "chapter")
 MOOD_GAIN = {"menu": .55, "control": .5, "explore": .55, "unknown": .55, "revelation": .65, "chapter": .7}
 FADE_IN, FADE_OUT = .30, .45        # volume units per second: a track takes about a second to fade out, then the next fades in
-MUSIC_CACHE = os.path.join(tempfile.gettempdir(), "the_last_signal_music_v1")
+MUSIC_CACHE = os.path.join(tempfile.gettempdir(), "the_last_signal_music_v2")
 _FROZEN = getattr(sys, "frozen", False)          # running as a packaged .exe
 MUSIC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "music")
 # search order: a music/ folder next to the game (your own WAVs), the music bundled inside the .exe, then the generated cache
