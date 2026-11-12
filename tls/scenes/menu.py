@@ -93,8 +93,7 @@ class MenuScene(Scene):
                     W / 2, 248, DIM, 7, False, True)
         seen = self.game.save.data.get("endings", [])
         if seen:
-            from ..story import endings_total
-            ui.text(p, f"Endings found: {len(set(seen))}/{endings_total(seen)}", W - 8 - 80, 14, DIM, 7)
+            ui.text(p, f"Endings found: {len(set(seen))}/2", W - 8 - 80, 14, DIM, 7)
         ui.text(p, "W/S select   ENTER confirm   F11 fullscreen",
                 W / 2, H - 8, DIM, 7, False, True)
 

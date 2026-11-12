@@ -88,7 +88,7 @@ class EndingScene(Scene):
             seen.append(self.kind)
         from ..achievements import check as check_achievements
         check_achievements(gp)
-        gp.flags -= {"decision", "decision_warn", "decision_silence", "decision_echo", "m_c5m4", "ch5_done"}
+        gp.flags -= {"decision", "decision_warn", "decision_silence", "m_c5m4", "ch5_done"}
         gp.save_progress()
         self.game.audio.set_music(0)
         self.game.scenes[:] = [self.game.scenes[0]]
@@ -126,8 +126,7 @@ class EndingScene(Scene):
             a = min(1.0, t / 1.2)
             ui.text_spaced(p, "THE END", W / 2, H / 2 - 4, QColor(self.col[0], self.col[1], self.col[2], int(255 * a)), 18, 6, True, True)
             seen = self.game.save.data.get("endings", [])
-            from ..story import endings_total
-            ui.text(p, f"Endings found: {len(set(seen))} of {endings_total(seen)}", W / 2 - 52, H / 2 + 20, QColor(150, 165, 185, int(220 * a)), 8)
+            ui.text(p, f"Endings found: {len(set(seen))} of 2", W / 2 - 52, H / 2 + 20, QColor(150, 165, 185, int(220 * a)), 8)
             from ..achievements import completion
             ui.text(p, f"Achievements: {completion(self.game.save)}% complete", W / 2 - 60, H / 2 + 32, QColor(150, 165, 185, int(220 * a)), 8)
             if len(set(seen)) < 2:

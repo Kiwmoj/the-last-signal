@@ -276,23 +276,8 @@ DECISION = {
     "silence": ("SHUT IT DOWN",
                 "Cut the power. The signal ends after seventeen years. What happened in 1980 stays as it was, "
                 "and you walk out with the truth."),
-    "echo": ("ANSWER THE VOICE",
-             "You carry Wren's letter, Nora's secret and Elias's apology. Do not warn it, do not silence it. Answer it."),
 }
-SECRET_FLAGS = ("locker_open", "safe_open", "cal_done")          # every optional puzzle reward unlocks the third choice
-
-
-def endings_total(seen):
-    """'of 2' until the secret ending has been found, so the menu does not spoil it."""
-    return 3 if "echo" in seen else 2
-
-
 ENDINGS = {
-    "echo": ("ENDING: THE ECHO", (190, 120, 255), [
-        "You do not send a warning, and you do not cut the power. You lean to the microphone and say the one thing nobody has said to the voice in seventeen years: 'I hear you.'",
-        "On the unknown band, a long breath. Then Wren's calibration holds steady, Nora's cassette plays in the dark, and Elias's apology finally reaches the voice. The loop does not break. It finishes.",
-        "The coils glow once, softly, and every dial settles on 88.1. Three people who never met the voice hear it say, together with you: 'Thank you for listening.'",
-        "Dawn. Station 09 is quiet, and the quiet is warm. At the gate a woman in her forties waits with a child's drawing of a sun with nine rays. 'My father said someone would answer,' says Nora."]),
     "warn": ("ENDING: THE WARNING", (255, 210, 120), [
         "You key the transmitter and speak what Elias never heard: your name, the date, and the one fact he cannot ignore. 'Nora is safe. Close the archive.'",
         "Seventeen years collapse into a single breath. Somewhere in 1980, a man lowers his hand from a lever.",

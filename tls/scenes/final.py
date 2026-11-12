@@ -9,7 +9,7 @@ from PyQt6.QtCore import Qt, QRectF
 from PyQt6.QtGui import QColor, QPen
 
 from ..constants import W, H, CYAN, AMBER, TEXT, DIM, GREEN, RED
-from ..story import FINAL_ORDER, FINAL_LINES, REWARD, DECISION, DECISION_INTRO, SECRET_FLAGS
+from ..story import FINAL_ORDER, FINAL_LINES, REWARD, DECISION, DECISION_INTRO
 from ..world import FREQS, FREQ_NAMES, TINT
 from .. import ui
 from .overlay import Overlay, Typer
@@ -119,11 +119,8 @@ class DecisionScene(Overlay):
     def __init__(self, game, gp):
         super().__init__(game, gp)
         self.sel = 0
-        self.keys = ("warn", "silence") + (("echo",) if all(f in gp.flags for f in SECRET_FLAGS) else ())
-        if len(self.keys) == 3:
-            self.rects = [QRectF(10, 118, 148, 118), QRectF(166, 118, 148, 118), QRectF(322, 118, 148, 118)]
-        else:
-            self.rects = [QRectF(30, 118, 200, 112), QRectF(250, 118, 200, 112)]
+        self.keys = ("warn", "silence")                  # the last decision is always a choice between two
+        self.rects = [QRectF(30, 118, 200, 112), QRectF(250, 118, 200, 112)]
         self.audio.play("rise", .6)
 
     def key_press(self, k):
@@ -171,7 +168,7 @@ class DecisionScene(Overlay):
         for i, r in enumerate(self.rects):
             kind = self.keys[i]
             title, desc = DECISION[kind]
-            col = {"warn": QColor(255, 210, 120), "silence": QColor(120, 190, 255), "echo": QColor(200, 140, 255)}[kind]
+            col = QColor(255, 210, 120) if kind == "warn" else QColor(120, 190, 255)
             on = i == self.sel
             p.fillRect(r, QColor(col.red() // 8, col.green() // 8, col.blue() // 8, 235))
             if on:

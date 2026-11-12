@@ -12,7 +12,6 @@ ACHIEVEMENTS = [
     ("combination", "Combination Master", "Open Staff Locker 2-A.", lambda gp: "locker_open" in gp.flags),
     ("nora", "Nora's Secret", "Open the Wing Safe.", lambda gp: "safe_open" in gp.flags),
     ("calibrated", "Perfect Pitch", "Calibrate the Archive console.", lambda gp: "cal_done" in gp.flags),
-    ("secret_end", "The Third Way", "Reach the secret ending.", lambda gp: "decision_echo" in gp.flags),
     ("the_voice", "The Voice Was Yours", "Play recording 09-A.", lambda gp: "revealed" in gp.flags),
     ("chamber", "Into the Chamber", "Open the transmission chamber.", lambda gp: "chamber_open" in gp.flags),
     ("decision", "The Last Decision", "Reach an ending.", lambda gp: "decision" in gp.flags),
