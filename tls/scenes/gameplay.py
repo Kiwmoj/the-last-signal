@@ -163,6 +163,8 @@ class GameplayScene(Scene):
         self.zone_fade = 1.0                     # 0 -> 1 over 0.7 s after crossing into another room
         self.toast = ""
         self.toast_t = 0.0
+        self.toast_q = []                        # messages waiting for the current one to finish
+        self.ach_pop = None                      # (title, seconds left) achievement banner
         self._sig = self._progress_sig()
         self._sig_t = 0.0
         self._blip = 0
@@ -178,6 +180,11 @@ class GameplayScene(Scene):
         return self.game.audio
 
     def say(self, text, secs=3.5):
+        """Show a message. If another is still on screen, wait for it instead of overwriting it (the queue is kept short)."""
+        if self.toast_t > .8 and text != self.toast:
+            if all(text != t for t, _ in self.toast_q) and len(self.toast_q) < 3:
+                self.toast_q.append((text, secs))
+            return
         self.toast, self.toast_t = text, secs
 
     def solids(self):
@@ -700,7 +707,7 @@ class GameplayScene(Scene):
             self._sig_t = 0.0
             from ..achievements import check as check_achievements
             for _aid, title in check_achievements(self):
-                self.say("Achievement unlocked: " + title, 4)
+                self.ach_pop = (title, 4.0)               # its own banner, so it never hides a hint
                 self.audio.play("ok")
                 self.game.save.save()
             if self._progress_sig() != self._sig:
@@ -739,6 +746,10 @@ class GameplayScene(Scene):
             self.flags.add("annex_reached")
         self.banner = max(0.0, self.banner - dt)
         self.toast_t = max(0.0, self.toast_t - dt)
+        if self.toast_t <= 0 and self.toast_q:
+            self.toast, self.toast_t = self.toast_q.pop(0)
+        if self.ach_pop:
+            self.ach_pop = (self.ach_pop[0], self.ach_pop[1] - dt) if self.ach_pop[1] > dt else None
         self._ambient(dt)
         self.fx.update(dt)
 
@@ -1069,6 +1080,13 @@ class GameplayScene(Scene):
             return
         if self.toast_t > 0:
             ui.text(p, self.toast, W / 2, 222, QColor(255, 200, 100, int(255 * min(1, self.toast_t))), 8, True, True)
+        if self.ach_pop:                                   # achievement banner slides down from the top centre
+            title, left = self.ach_pop
+            a = min(1.0, left * 2, (4.0 - left) * 4)
+            y = 8 - (1 - a) * 30
+            ui.panel(p, W / 2 - 80, y, 160, 26, QColor(255, 210, 90))
+            ui.text(p, "ACHIEVEMENT UNLOCKED", W / 2, y + 10, QColor(255, 210, 90), 6, True, True)
+            ui.text(p, title, W / 2, y + 21, QColor(255, 255, 255), 8, True, True)
         if self.focus:
             pr = self.focus
             spec = pr.spec(self.freq)

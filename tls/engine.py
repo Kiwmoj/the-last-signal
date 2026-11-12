@@ -43,6 +43,8 @@ class GameWindow(QWidget):
         self.buffer = QImage(W, H, QImage.Format.Format_ARGB32_Premultiplied)
         self.keys = set()
         self.hide_hud = False
+        self._last_scene = None
+        self.scene_fade = 0.0
         self.last_screenshot = None
         self.time = 0.0
         self.scenes = []
@@ -78,6 +80,11 @@ class GameWindow(QWidget):
         self._last = now
         self.time += dt
         top = self.scenes[-1]
+        if top is not self._last_scene:                     # a different screen: brief fade up from black
+            self._last_scene = top
+            if not getattr(top, "overlay", False) and type(top).__name__ not in ("GameplayScene", "IntroScene", "EndingScene", "ChapterScene"):
+                self.scene_fade = 1.0
+        self.scene_fade = max(0.0, self.scene_fade - dt / .28)
         try:
             self.pad.poll(dt)
             top = self.scenes[-1]
@@ -115,6 +122,8 @@ class GameWindow(QWidget):
             except Exception:
                 self._recover(s)
                 break
+        if self.scene_fade > 0:
+            bp.fillRect(0, 0, W, H, QColor(0, 0, 0, int(255 * min(1.0, self.scene_fade))))
         if self.save.settings["scanlines"]:
             bp.setPen(QColor(0, 0, 0, 40))
             for y in range(0, H, 2):
